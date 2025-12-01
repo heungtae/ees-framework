@@ -23,6 +23,7 @@
         <module>sink</module>
         <module>workflow</module>
         <module>spring-boot-starter</module>
+        <module>application</module>
     </modules>
 
     <properties>
