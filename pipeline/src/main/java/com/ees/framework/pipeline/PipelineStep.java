@@ -1,6 +1,7 @@
 package com.ees.framework.pipeline;
 
 import com.ees.framework.context.FxContext;
+import com.ees.framework.context.SupportsContext;
 import reactor.core.publisher.Mono;
 
 /**
@@ -9,7 +10,7 @@ import reactor.core.publisher.Mono;
  * @param <I> 입력 타입
  * @param <O> 출력 타입
  */
-public interface PipelineStep<I, O> {
+public interface PipelineStep<I, O> extends SupportsContext {
 
     /**
      * 단일 컨텍스트를 입력받아 변환된 컨텍스트를 반환.

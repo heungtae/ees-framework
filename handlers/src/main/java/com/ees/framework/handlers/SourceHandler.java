@@ -1,6 +1,7 @@
 package com.ees.framework.handlers;
 
 import com.ees.framework.context.FxContext;
+import com.ees.framework.context.SupportsContext;
 import reactor.core.publisher.Mono;
 
 /**
@@ -8,7 +9,7 @@ import reactor.core.publisher.Mono;
  *
  * @param <T> 처리 대상 레코드 타입
  */
-public interface SourceHandler<T> {
+public interface SourceHandler<T> extends SupportsContext {
 
     /**
      * 단일 컨텍스트에 대한 처리.
