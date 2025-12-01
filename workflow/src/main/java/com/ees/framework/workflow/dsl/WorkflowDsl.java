@@ -16,6 +16,13 @@ public final class WorkflowDsl {
     private WorkflowDsl() {
     }
 
+    /**
+     * 선언형 DSL을 이용해 WorkflowDefinition을 생성한다.
+     *
+     * @param name 워크플로우 이름
+     * @param spec 빌더 설정 람다
+     * @return 완성된 WorkflowDefinition
+     */
     public static WorkflowDefinition define(String name, Consumer<Builder> spec) {
         Builder builder = new Builder(name);
         spec.accept(builder);
@@ -31,35 +38,67 @@ public final class WorkflowDsl {
         private HandlerChainDefinition sinkHandlers;
         private String sinkType;
 
+        /**
+         * 워크플로우 빌더를 생성한다.
+         *
+         * @param name 워크플로우 이름
+         */
         public Builder(String name) {
             this.name = name;
         }
 
+        /**
+         * 사용할 Source 타입 이름을 설정한다.
+         */
         public Builder source(String sourceType) {
             this.sourceType = sourceType;
             return this;
         }
 
+        /**
+         * Source 단계에 적용할 핸들러 체인을 등록한다.
+         *
+         * @param mode 실행 모드(예: SEQUENTIAL, PARALLEL)
+         * @param handlerNames 적용할 핸들러 이름 목록
+         */
         public Builder sourceHandlers(ExecutionMode mode, String... handlerNames) {
             this.sourceHandlers = new HandlerChainDefinition(mode, List.of(handlerNames));
             return this;
         }
 
+        /**
+         * 순차 실행될 파이프라인 스텝 이름을 추가한다.
+         */
         public Builder step(String stepName) {
             this.pipelineSteps.add(stepName);
             return this;
         }
 
+        /**
+         * Sink 단계에 적용할 핸들러 체인을 등록한다.
+         *
+         * @param mode 실행 모드(예: SEQUENTIAL, PARALLEL)
+         * @param handlerNames 적용할 핸들러 이름 목록
+         */
         public Builder sinkHandlers(ExecutionMode mode, String... handlerNames) {
             this.sinkHandlers = new HandlerChainDefinition(mode, List.of(handlerNames));
             return this;
         }
 
+        /**
+         * 사용할 Sink 타입 이름을 설정한다.
+         */
         public Builder sink(String sinkType) {
             this.sinkType = sinkType;
             return this;
         }
 
+        /**
+         * 필수 요소를 검증하고 WorkflowDefinition을 생성한다.
+         *
+         * @return 완성된 WorkflowDefinition
+         * @throws IllegalStateException source/sink 정보가 누락된 경우
+         */
         public WorkflowDefinition build() {
             if (sourceType == null) {
                 throw new IllegalStateException("sourceType must be set");

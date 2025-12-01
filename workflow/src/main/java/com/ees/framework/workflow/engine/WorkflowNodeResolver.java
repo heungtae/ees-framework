@@ -19,6 +19,9 @@ public interface WorkflowNodeResolver {
      *
      * 반환 타입은 구현마다 다르므로 Object 로 두고,
      * ReactorWorkflowEngine 에서 kind 에 따라 캐스팅하여 사용한다.
+     *
+     * @param node 워크플로우 노드 정의
+     * @return 실제 실행 객체 (Source, Handler, PipelineStep, Sink 등)
      */
     Object resolve(WorkflowNodeDefinition node);
 }

@@ -1,5 +1,6 @@
 package com.ees.framework.sink;
 
+import com.ees.framework.context.FxContext;
 import reactor.core.publisher.Mono;
 
 /**
@@ -10,7 +11,7 @@ import reactor.core.publisher.Mono;
 public interface Sink<T> {
 
     /**
-     * 레코드 스트림을 받아서 저장/전송을 수행.
+     * 컨텍스트를 받아서 저장/전송을 수행.
      */
-    Mono<Void> write(T record);
+    Mono<Void> write(FxContext<T> context);
 }

@@ -1,6 +1,6 @@
 package com.ees.framework.registry;
 
-import com.ees.framework.annotations.EesSource;
+import com.ees.framework.annotations.FxSource;
 import com.ees.framework.source.Source;
 import org.springframework.util.StringUtils;
 
@@ -9,7 +9,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * @EesSource(type=...) 메타데이터를 이용한 기본 SourceRegistry 구현.
+ * @FxSource(type=...) 메타데이터를 이용한 기본 SourceRegistry 구현.
  */
 public class DefaultSourceRegistry implements SourceRegistry {
 
@@ -17,7 +17,7 @@ public class DefaultSourceRegistry implements SourceRegistry {
 
     public DefaultSourceRegistry(List<Source<?>> sources) {
         for (Source<?> src : sources) {
-            EesSource ann = src.getClass().getAnnotation(EesSource.class);
+            FxSource ann = src.getClass().getAnnotation(FxSource.class);
             if (ann != null && StringUtils.hasText(ann.type())) {
                 byType.put(ann.type(), src);
             }

@@ -1,6 +1,6 @@
 package com.ees.framework.registry;
 
-import com.ees.framework.annotations.EesPipelineStep;
+import com.ees.framework.annotations.FxPipelineStep;
 import com.ees.framework.pipeline.PipelineStep;
 import org.springframework.util.StringUtils;
 
@@ -9,7 +9,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * @EesPipelineStep(value=...) 메타데이터를 이용한 기본 PipelineStepRegistry 구현.
+ * @FxPipelineStep(value=...) 메타데이터를 이용한 기본 PipelineStepRegistry 구현.
  */
 public class DefaultPipelineStepRegistry implements PipelineStepRegistry {
 
@@ -17,7 +17,7 @@ public class DefaultPipelineStepRegistry implements PipelineStepRegistry {
 
     public DefaultPipelineStepRegistry(List<PipelineStep<?, ?>> steps) {
         for (PipelineStep<?, ?> step : steps) {
-            EesPipelineStep ann = step.getClass().getAnnotation(EesPipelineStep.class);
+            FxPipelineStep ann = step.getClass().getAnnotation(FxPipelineStep.class);
             if (ann != null && StringUtils.hasText(ann.value())) {
                 byName.put(ann.value(), step);
             }

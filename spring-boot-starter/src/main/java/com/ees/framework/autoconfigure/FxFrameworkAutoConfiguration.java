@@ -29,7 +29,7 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * EES Framework Spring Boot AutoConfiguration.
+ * FX Framework Spring Boot AutoConfiguration.
  *
  * - 레지스트리 Bean 생성
  * - WorkflowGraphValidator / LinearToGraphConverter / ReactorWorkflowEngine Bean 생성
@@ -37,7 +37,7 @@ import java.util.List;
  * - WorkflowDefinition / WorkflowGraphDefinition 리스트는 추후 properties/DSL 로 확장
  */
 @AutoConfiguration
-public class EesFrameworkAutoConfiguration {
+public class FxFrameworkAutoConfiguration {
 
     // ------------------------------------------------------------------------
     // Registry beans

@@ -13,6 +13,15 @@ public final class WorkflowGraphDefinition {
     private final List<WorkflowNodeDefinition> nodes;
     private final List<WorkflowEdgeDefinition> edges;
 
+    /**
+     * 그래프 기반 워크플로우 정의를 생성한다.
+     *
+     * @param name        워크플로우 이름
+     * @param startNodeId 시작 노드 ID
+     * @param endNodeIds  종료 노드 ID 집합
+     * @param nodes       그래프 노드 목록
+     * @param edges       그래프 엣지 목록
+     */
     public WorkflowGraphDefinition(
         String name,
         String startNodeId,
@@ -27,22 +36,27 @@ public final class WorkflowGraphDefinition {
         this.edges = List.copyOf(edges);
     }
 
+    /** 워크플로우 이름 */
     public String getName() {
         return name;
     }
 
+    /** 시작 노드 ID */
     public String getStartNodeId() {
         return startNodeId;
     }
 
+    /** 종료 노드 ID 집합 */
     public Set<String> getEndNodeIds() {
         return Collections.unmodifiableSet(endNodeIds);
     }
 
+    /** 노드 목록 */
     public List<WorkflowNodeDefinition> getNodes() {
         return Collections.unmodifiableList(nodes);
     }
 
+    /** 엣지 목록 */
     public List<WorkflowEdgeDefinition> getEdges() {
         return Collections.unmodifiableList(edges);
     }

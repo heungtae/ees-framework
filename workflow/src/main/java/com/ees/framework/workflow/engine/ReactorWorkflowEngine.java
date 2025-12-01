@@ -47,6 +47,11 @@ public class ReactorWorkflowEngine {
             return graph.getName();
         }
 
+        /**
+         * 그래프 정의를 기반으로 파이프라인을 조립하고 실행을 시작한다.
+         *
+         * @return 완료 신호(Mono) - 실제 구현에서는 Source 구독 완료 후 반환 예정
+         */
         @Override
         public Mono<Void> start() {
             // TODO: 여기에 실제 그래프 -> Reactor 파이프라인 조립 로직을 구현.
@@ -65,6 +70,11 @@ public class ReactorWorkflowEngine {
             return Mono.empty();
         }
 
+        /**
+         * 실행 중인 워크플로우를 중지하고 리소스를 정리한다.
+         *
+         * @return 완료 신호(Mono) - 실제 구현에서는 구독 해제 후 반환 예정
+         */
         @Override
         public Mono<Void> stop() {
             // TODO: start() 에서 유지하던 subscription/리소스 정리 작업 수행.

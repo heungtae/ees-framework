@@ -1,10 +1,10 @@
 package com.ees.framework.pipeline;
 
-import reactor.core.publisher.Flux;
+import com.ees.framework.context.FxContext;
+import reactor.core.publisher.Mono;
 
 /**
  * Pipeline 내부에서 사용되는 변환 단계.
- * Flux<I>를 받아 Flux<O>로 변환하는 역할.
  *
  * @param <I> 입력 타입
  * @param <O> 출력 타입
@@ -12,7 +12,7 @@ import reactor.core.publisher.Flux;
 public interface PipelineStep<I, O> {
 
     /**
-     * 입력 스트림을 받아 변환된 출력 스트림을 반환.
+     * 단일 컨텍스트를 입력받아 변환된 컨텍스트를 반환.
      */
-    Flux<O> apply(Flux<I> input);
+    Mono<FxContext<O>> apply(FxContext<I> context);
 }

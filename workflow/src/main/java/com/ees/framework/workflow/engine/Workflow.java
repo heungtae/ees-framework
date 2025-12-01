@@ -21,6 +21,8 @@ public interface Workflow {
      *
      * 보통 Source(Kafka 등)를 subscribe 하고,
      * 전체 파이프라인을 연결하는 작업을 수행한다.
+     *
+     * @return 실행 완료 신호(Mono) - 비동기 시작 절차를 표현
      */
     Mono<Void> start();
 
@@ -28,6 +30,8 @@ public interface Workflow {
      * Workflow 실행을 중지한다.
      *
      * Source 구독 해제, 리소스 정리 등을 담당한다.
+     *
+     * @return 중지 완료 신호(Mono)
      */
     Mono<Void> stop();
 }

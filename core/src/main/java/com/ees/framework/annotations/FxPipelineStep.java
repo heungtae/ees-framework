@@ -12,7 +12,7 @@ import java.lang.annotation.*;
 @Retention(RetentionPolicy.RUNTIME)
 @Documented
 @Component
-public @interface EesPipelineStep {
+public @interface FxPipelineStep {
 
     /**
      * Pipeline step 논리 이름 (예: "validateOrder").

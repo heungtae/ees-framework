@@ -5,17 +5,17 @@ import org.springframework.stereotype.Component;
 import java.lang.annotation.*;
 
 /**
- * Source 구현체에 붙이는 어노테이션.
- * type 값은 논리적 Source 타입 이름으로 사용된다.
+ * Sink 구현체에 붙이는 어노테이션.
+ * value = sink 타입 논리 이름 (예: "db-order").
  */
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
 @Documented
 @Component
-public @interface EesSource {
+public @interface FxSink {
 
     /**
-     * Source 타입 논리 이름 (예: "kafka-order").
+     * Sink 타입 논리 이름.
      */
-    String type();
+    String value();
 }

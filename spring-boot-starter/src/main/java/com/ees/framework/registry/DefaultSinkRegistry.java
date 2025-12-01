@@ -1,6 +1,6 @@
 package com.ees.framework.registry;
 
-import com.ees.framework.annotations.EesSink;
+import com.ees.framework.annotations.FxSink;
 import com.ees.framework.sink.Sink;
 import org.springframework.util.StringUtils;
 
@@ -9,7 +9,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * @EesSink(value=...) 메타데이터를 이용한 기본 SinkRegistry 구현.
+ * @FxSink(value=...) 메타데이터를 이용한 기본 SinkRegistry 구현.
  */
 public class DefaultSinkRegistry implements SinkRegistry {
 
@@ -17,7 +17,7 @@ public class DefaultSinkRegistry implements SinkRegistry {
 
     public DefaultSinkRegistry(List<Sink<?>> sinks) {
         for (Sink<?> sink : sinks) {
-            EesSink ann = sink.getClass().getAnnotation(EesSink.class);
+            FxSink ann = sink.getClass().getAnnotation(FxSink.class);
             if (ann != null && StringUtils.hasText(ann.value())) {
                 byType.put(ann.value(), sink);
             }
