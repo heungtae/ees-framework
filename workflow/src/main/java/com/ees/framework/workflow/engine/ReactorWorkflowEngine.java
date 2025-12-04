@@ -3,7 +3,20 @@ package com.ees.framework.workflow.engine;
 import com.ees.framework.workflow.model.WorkflowGraphDefinition;
 import com.ees.framework.workflow.model.WorkflowNodeDefinition;
 import com.ees.framework.workflow.model.WorkflowNodeKind;
+import com.ees.framework.handlers.SinkHandler;
+import com.ees.framework.handlers.SourceHandler;
+import com.ees.framework.pipeline.PipelineStep;
+import com.ees.framework.sink.Sink;
+import com.ees.framework.source.Source;
+import com.ees.framework.context.FxContext;
+import reactor.core.Disposable;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * WorkflowGraphDefinition + WorkflowNodeResolver 를 이용해
@@ -35,7 +48,7 @@ public class ReactorWorkflowEngine {
         private final WorkflowNodeResolver resolver;
 
         // 필요시 Reactor 구독 핸들(Disposable 등)을 여기에 보관
-        // private Disposable subscription;
+        private Disposable subscription;
 
         private DefaultWorkflow(WorkflowGraphDefinition graph, WorkflowNodeResolver resolver) {
             this.graph = graph;
@@ -54,19 +67,68 @@ public class ReactorWorkflowEngine {
          */
         @Override
         public Mono<Void> start() {
-            // TODO: 여기에 실제 그래프 -> Reactor 파이프라인 조립 로직을 구현.
-            //
-            // 1. startNodeId 기준으로 Source 노드를 찾고 Source Bean resolve
-            // 2. edges 를 따라가며 Handler/Pipeline/Sink 노드들을 Reactor 연산으로 연결
-            // 3. Source 의 Flux 를 subscribe 하고, subscription 을 필드에 보관
-            //
-            //   예시 개념:
-            //   WorkflowNodeDefinition startNode = findNode(graph.getStartNodeId());
-            //   Object sourceBean = resolver.resolve(startNode);
-            //   // Source -> Flux 시작
-            //   // 이후 edges 를 따라가며 handler/step/sink 연결...
-
             System.out.println("[ReactorWorkflowEngine] Starting workflow: " + graph.getName());
+
+            Map<String, WorkflowNodeDefinition> nodesById = graph.getNodes().stream()
+                .collect(Collectors.toMap(WorkflowNodeDefinition::getId, n -> n));
+            Map<String, List<String>> edgesByFrom = graph.getEdges().stream()
+                .collect(Collectors.groupingBy(
+                    edge -> edge.getFromNodeId(),
+                    Collectors.mapping(edge -> edge.getToNodeId(), Collectors.toList())
+                ));
+
+            WorkflowNodeDefinition startNode = findNode(graph.getStartNodeId());
+            if (startNode.getKind() != WorkflowNodeKind.SOURCE) {
+                return Mono.error(new IllegalStateException("Start node must be SOURCE: " + startNode.getId()));
+            }
+
+            @SuppressWarnings("unchecked")
+            Source<Object> source = (Source<Object>) resolver.resolve(startNode);
+            Flux<FxContext<Object>> flux = source.read();
+
+            WorkflowNodeDefinition current = startNode;
+            while (true) {
+                List<WorkflowNodeDefinition> nextNodes = successors(current, nodesById, edgesByFrom);
+                if (nextNodes.isEmpty()) {
+                    break;
+                }
+                if (nextNodes.size() > 1) {
+                    return Mono.error(new IllegalStateException(
+                        "Branching workflows are not supported yet for node: " + current.getId()));
+                }
+                WorkflowNodeDefinition next = nextNodes.get(0);
+
+                switch (next.getKind()) {
+                    case SOURCE_HANDLER -> {
+                        @SuppressWarnings("unchecked")
+                        SourceHandler<Object> handler = (SourceHandler<Object>) resolver.resolve(next);
+                        flux = applySourceHandler(flux, handler);
+                    }
+                    case PIPELINE_STEP -> {
+                        @SuppressWarnings("unchecked")
+                        PipelineStep<Object, Object> step = (PipelineStep<Object, Object>) resolver.resolve(next);
+                        flux = applyPipelineStep(flux, step);
+                    }
+                    case SINK_HANDLER -> {
+                        @SuppressWarnings("unchecked")
+                        SinkHandler<Object> handler = (SinkHandler<Object>) resolver.resolve(next);
+                        flux = applySinkHandler(flux, handler);
+                    }
+                    case SINK -> {
+                        @SuppressWarnings("unchecked")
+                        Sink<Object> sink = (Sink<Object>) resolver.resolve(next);
+                        Mono<Void> run = flux.flatMap(ctx -> sink.write(ctx)).then();
+                        this.subscription = run.subscribe();
+                        return Mono.empty();
+                    }
+                    case SOURCE -> throw new IllegalStateException("Unexpected SOURCE after start: " + next.getId());
+                }
+
+                current = next;
+            }
+
+            // Sink 노드가 없으면 단순히 완료 시그널 반환
+            this.subscription = flux.then().subscribe();
             return Mono.empty();
         }
 
@@ -77,8 +139,10 @@ public class ReactorWorkflowEngine {
          */
         @Override
         public Mono<Void> stop() {
-            // TODO: start() 에서 유지하던 subscription/리소스 정리 작업 수행.
             System.out.println("[ReactorWorkflowEngine] Stopping workflow: " + graph.getName());
+            if (subscription != null && !subscription.isDisposed()) {
+                subscription.dispose();
+            }
             return Mono.empty();
         }
 
@@ -90,6 +154,55 @@ public class ReactorWorkflowEngine {
                 .filter(n -> n.getId().equals(nodeId))
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("Node not found: " + nodeId));
+        }
+
+        private List<WorkflowNodeDefinition> successors(
+            WorkflowNodeDefinition node,
+            Map<String, WorkflowNodeDefinition> nodesById,
+            Map<String, List<String>> edgesByFrom
+        ) {
+            List<String> toIds = edgesByFrom.getOrDefault(node.getId(), List.of());
+            List<WorkflowNodeDefinition> next = new ArrayList<>();
+            for (String id : toIds) {
+                WorkflowNodeDefinition target = nodesById.get(id);
+                if (target != null) {
+                    next.add(target);
+                }
+            }
+            return next;
+        }
+
+        private Flux<FxContext<Object>> applySourceHandler(
+            Flux<FxContext<Object>> flux,
+            SourceHandler<Object> handler
+        ) {
+            return flux.flatMap(ctx ->
+                handler.supports(ctx)
+                    ? handler.handle(ctx)
+                    : Mono.just(ctx)
+            );
+        }
+
+        private Flux<FxContext<Object>> applySinkHandler(
+            Flux<FxContext<Object>> flux,
+            SinkHandler<Object> handler
+        ) {
+            return flux.flatMap(ctx ->
+                handler.supports(ctx)
+                    ? handler.handle(ctx)
+                    : Mono.just(ctx)
+            );
+        }
+
+        private Flux<FxContext<Object>> applyPipelineStep(
+            Flux<FxContext<Object>> flux,
+            PipelineStep<Object, Object> step
+        ) {
+            return flux.flatMap(ctx ->
+                step.supports(ctx)
+                    ? step.apply(ctx)
+                    : Mono.just(ctx)
+            );
         }
 
         @SuppressWarnings("unused")

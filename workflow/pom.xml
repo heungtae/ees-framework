@@ -20,6 +20,22 @@
             <groupId>com.ees</groupId>
             <artifactId>ees-core</artifactId>
         </dependency>
+        <dependency>
+            <groupId>com.ees</groupId>
+            <artifactId>ees-source</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.ees</groupId>
+            <artifactId>ees-handlers</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.ees</groupId>
+            <artifactId>ees-pipeline</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.ees</groupId>
+            <artifactId>ees-sink</artifactId>
+        </dependency>
 
         <!-- Reactor 실행 엔진에서 사용 -->
         <dependency>
