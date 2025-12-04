@@ -1,14 +1,17 @@
 package com.ees.framework.workflow.engine;
 
-import com.ees.framework.workflow.model.WorkflowGraphDefinition;
-import com.ees.framework.workflow.model.WorkflowNodeDefinition;
-import com.ees.framework.workflow.model.WorkflowNodeKind;
+import com.ees.framework.context.FxContext;
 import com.ees.framework.handlers.SinkHandler;
 import com.ees.framework.handlers.SourceHandler;
 import com.ees.framework.pipeline.PipelineStep;
 import com.ees.framework.sink.Sink;
 import com.ees.framework.source.Source;
-import com.ees.framework.context.FxContext;
+import com.ees.framework.workflow.model.WorkflowGraphDefinition;
+import com.ees.framework.workflow.model.WorkflowNodeDefinition;
+import com.ees.framework.workflow.model.WorkflowNodeKind;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -25,6 +28,7 @@ import java.util.stream.Collectors;
  * 실제 그래프 -> Flux 파이프라인 매핑 로직은
  * 이후 단계에서 이 클래스 안에 채워 넣는다.
  */
+@Slf4j
 public class ReactorWorkflowEngine {
 
     /**
@@ -42,6 +46,7 @@ public class ReactorWorkflowEngine {
      * 현재는 스켈레톤으로 start/stop 에서 간단한 로그만 출력하고,
      * 실제 Reactor 파이프라인은 TODO 로 남겨둔다.
      */
+    @RequiredArgsConstructor(access = AccessLevel.PRIVATE)
     private static class DefaultWorkflow implements Workflow {
 
         private final WorkflowGraphDefinition graph;
@@ -49,11 +54,6 @@ public class ReactorWorkflowEngine {
 
         // 필요시 Reactor 구독 핸들(Disposable 등)을 여기에 보관
         private Disposable subscription;
-
-        private DefaultWorkflow(WorkflowGraphDefinition graph, WorkflowNodeResolver resolver) {
-            this.graph = graph;
-            this.resolver = resolver;
-        }
 
         @Override
         public String getName() {
@@ -67,7 +67,7 @@ public class ReactorWorkflowEngine {
          */
         @Override
         public Mono<Void> start() {
-            System.out.println("[ReactorWorkflowEngine] Starting workflow: " + graph.getName());
+            log.info("Starting workflow: {}", graph.getName());
 
             Map<String, WorkflowNodeDefinition> nodesById = graph.getNodes().stream()
                 .collect(Collectors.toMap(WorkflowNodeDefinition::getId, n -> n));
@@ -139,7 +139,7 @@ public class ReactorWorkflowEngine {
          */
         @Override
         public Mono<Void> stop() {
-            System.out.println("[ReactorWorkflowEngine] Stopping workflow: " + graph.getName());
+            log.info("Stopping workflow: {}", graph.getName());
             if (subscription != null && !subscription.isDisposed()) {
                 subscription.dispose();
             }
@@ -207,15 +207,12 @@ public class ReactorWorkflowEngine {
 
         @SuppressWarnings("unused")
         private void debugPrintGraph() {
-            System.out.println("WorkflowGraphDefinition: " + graph.getName());
+            log.info("WorkflowGraphDefinition: {}", graph.getName());
             graph.getNodes().forEach(node -> {
-                System.out.println("  Node: " + node.getId() +
-                    " kind=" + node.getKind() +
-                    " ref=" + node.getRefName());
+                log.info("  Node: {} kind={} ref={}", node.getId(), node.getKind(), node.getRefName());
             });
             graph.getEdges().forEach(edge -> {
-                System.out.println("  Edge: " + edge.getFromNodeId() + " -> " +
-                    edge.getToNodeId() + " cond=" + edge.getCondition());
+                log.info("  Edge: {} -> {} cond={}", edge.getFromNodeId(), edge.getToNodeId(), edge.getCondition());
             });
         }
 
