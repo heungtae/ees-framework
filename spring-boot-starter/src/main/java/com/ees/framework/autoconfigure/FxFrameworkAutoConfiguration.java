@@ -17,15 +17,16 @@ import com.ees.framework.sink.Sink;
 import com.ees.framework.source.Source;
 import com.ees.framework.workflow.DefaultWorkflowNodeResolver;
 import com.ees.framework.workflow.engine.ReactorWorkflowEngine;
+import com.ees.framework.workflow.engine.WorkflowRuntime;
 import com.ees.framework.workflow.engine.WorkflowNodeResolver;
 import com.ees.framework.workflow.model.WorkflowDefinition;
 import com.ees.framework.workflow.model.WorkflowGraphDefinition;
 import com.ees.framework.workflow.util.LinearToGraphConverter;
 import com.ees.framework.workflow.util.WorkflowGraphValidator;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Bean;
 
-import java.util.Collections;
 import java.util.List;
 
 /**
@@ -105,17 +106,25 @@ public class FxFrameworkAutoConfiguration {
     }
 
     // ------------------------------------------------------------------------
-    // WorkflowDefinition / GraphDefinition placeholder beans
-    // (실제 프로젝트에서 properties/DSL 로 대체/확장)
+    // Workflow runtime
     // ------------------------------------------------------------------------
 
     @Bean
-    public List<WorkflowDefinition> workflowDefinitions() {
-        return Collections.emptyList();
-    }
-
-    @Bean
-    public List<WorkflowGraphDefinition> workflowGraphDefinitions() {
-        return Collections.emptyList();
+    public WorkflowRuntime workflowRuntime(
+        ObjectProvider<WorkflowDefinition> workflowDefinitions,
+        ObjectProvider<WorkflowGraphDefinition> workflowGraphDefinitions,
+        LinearToGraphConverter converter,
+        WorkflowGraphValidator validator,
+        ReactorWorkflowEngine engine,
+        WorkflowNodeResolver resolver
+    ) {
+        return new WorkflowRuntime(
+            workflowDefinitions.orderedStream().toList(),
+            workflowGraphDefinitions.orderedStream().toList(),
+            converter,
+            validator,
+            engine,
+            resolver
+        );
     }
 }

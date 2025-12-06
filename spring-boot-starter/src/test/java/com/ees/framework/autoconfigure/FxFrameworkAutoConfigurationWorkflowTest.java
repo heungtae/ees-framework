@@ -17,6 +17,7 @@ import com.ees.framework.source.Source;
 import com.ees.framework.workflow.engine.ReactorWorkflowEngine;
 import com.ees.framework.workflow.engine.Workflow;
 import com.ees.framework.workflow.engine.WorkflowNodeResolver;
+import com.ees.framework.workflow.engine.WorkflowRuntime;
 import com.ees.framework.workflow.dsl.WorkflowDsl;
 import com.ees.framework.workflow.model.WorkflowDefinition;
 import com.ees.framework.workflow.model.WorkflowGraphDefinition;
@@ -66,6 +67,11 @@ class FxFrameworkAutoConfigurationWorkflowTest {
             assertThat(workflow.getName()).isEqualTo("sample-workflow");
             assertThat(graph.getStartNodeId()).isEqualTo("source");
             assertThat(graph.getEndNodeIds()).contains("sink");
+
+            WorkflowRuntime runtime = context.getBean(WorkflowRuntime.class);
+            assertThat(runtime.getWorkflows())
+                .extracting(Workflow::getName)
+                .containsExactly("sample-workflow");
         });
     }
 
