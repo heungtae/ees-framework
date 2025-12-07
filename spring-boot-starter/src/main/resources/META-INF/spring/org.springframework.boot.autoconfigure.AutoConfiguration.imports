@@ -1,2 +1,3 @@
 com.ees.cluster.spring.ClusterAutoConfiguration
 com.ees.ai.config.AiAutoConfiguration
+com.ees.framework.autoconfigure.FxFrameworkAutoConfiguration

@@ -21,7 +21,7 @@ public class ClusterProperties {
     private String nodeId = "local-node";
 
     private String host = "localhost";
-    private int port = 0;
+    private int port = 19090;
     private Set<ClusterRole> roles = Set.of(ClusterRole.PIPELINE);
     private String zone = "default";
     private Duration heartbeatInterval = Duration.ofSeconds(5);
