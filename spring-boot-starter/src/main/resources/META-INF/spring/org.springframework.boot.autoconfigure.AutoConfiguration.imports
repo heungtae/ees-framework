@@ -1,1 +1,2 @@
 com.ees.cluster.spring.ClusterAutoConfiguration
+com.ees.ai.config.AiAutoConfiguration
