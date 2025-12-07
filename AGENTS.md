@@ -1,4 +1,4 @@
-# Repository Guidelines
+ # Repository Guidelines
 
 ## Project Structure & Module Map
 - Maven aggregator `pom.xml` links modules: `core` (annotations, execution modes), `cluster` (cluster manager), `metadata-store` (metadata access), `messaging` (message bus), `source`/`handlers`/`pipeline`/`sink` (ingestion and processing abstractions), `workflow` (workflow DSL and engine), and `spring-boot-starter` (auto-config and registries). 
@@ -12,7 +12,7 @@
 - `mvn -pl spring-boot-starter spring-boot:repackage`: produce the starter jar with bundled dependencies for downstream apps.
 
 ## Coding Style & Naming Conventions
-- Target Java 17; use 4-space indentation and standard Java brace placement. Package names stay lowercase (`com.ees.framework.<area>`); classes/interfaces use PascalCase; methods and fields use camelCase.
+- Target Java 21; use 4-space indentation and standard Java brace placement. Package names stay lowercase (`com.ees.framework.<area>`); classes/interfaces use PascalCase; methods and fields use camelCase.
 - Prefer constructor injection for Spring components; keep annotations from `core` (e.g., `@FxSource`, `@FxSink`, `@FxPipelineStep`) close to the classes they mark.
 - Keep public APIs small and reactive-friendly (Flux/Mono) where applicable; avoid blocking in Reactor pipelines.
 
