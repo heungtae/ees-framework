@@ -109,3 +109,17 @@
 4) **API/UI**: REST/WebSocket 엔드포인트 노출; 스트리밍 응답을 소비하는 React/Vite 콘솔 스텁.
 5) **워크플로**: `AiAgentStep` 실행 경로에 툴 화이트리스트와 컨텍스트 주입 추가.
 6) **보안/관측**: 화이트리스트, 레이트 리밋, 메트릭/헬스 적용; 감사 로깅 연결.
+
+## 실행 상태
+- [x] Spring AI 의존성 추가 및 AI 코어 스켈레톤 빈(AiAgentService/Session/Tool 레지스트리) 등록
+- [x] 워크플로/클러스터 부트 시 필요한 기본 설정(클러스터 포트 기본값, 워크플로 자동 설정 임포트) 복원
+- [x] 루트 빌드/테스트 통과 확인(`mvn clean install`)
+- [ ] MCP 툴 브리지 구현 및 툴 화이트리스트 적용
+- [ ] REST/SSE API + Chat UI 스텁 노출
+- [ ] `AiAgentStep` 워크플로 통합 및 보안/관측 적용
+
+## 다음 단계
+- `AiAgentService.chat` 구현: ChatModel/StreamingChatModel 호출, 히스토리 저장, toolsAllowed 집행 포함.
+- MCP 클라이언트 툴 브리지 ToolCallback 추가 및 감사 훅 연결; AiToolRegistry에 기본 툴 등록.
+- REST/SSE 엔드포인트와 최소 UI 스텁 추가하여 스트리밍 응답/툴 결과 소비 경로 확보.
+- 워크플로 DSL에 `AiAgentStep` 삽입 및 테스트 추가; 레이트 리밋/메트릭/감사 연동.
