@@ -131,5 +131,5 @@
 - [x] AiAgentService 모델 호출 시 toolsAllowed/프롬프트 가드 적용 및 Spring AI ToolCallback 연동 강화
 - [ ] 레이트 리밋, 메트릭, 감사 로그 등의 관측·보안 훅 구현
 - [ ] REST/SSE API 및 Chat UI에 파라미터 검증·오류/승인 프롬프트·MCP 리소스 브라우저 추가
-- [ ] 워크플로 DSL 샘플 그래프/테스트에 AiAgentStep 통합 및 에러/재시도/툴 화이트리스트 처리
+- [x] 워크플로 DSL 샘플 그래프/테스트에 AiAgentStep 통합 및 에러/재시도/툴 화이트리스트 처리
 - [ ] 히스토리 저장소 플러그인(metadata-store/Redis 등) 추가
