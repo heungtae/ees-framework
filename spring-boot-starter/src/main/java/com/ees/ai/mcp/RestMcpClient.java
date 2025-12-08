@@ -1,11 +1,14 @@
 package com.ees.ai.mcp;
 
+import java.time.Duration;
 import java.util.Map;
 import java.util.Objects;
 import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
+import org.springframework.web.reactive.function.client.WebClientRequestException;
 import reactor.core.publisher.Mono;
+import reactor.util.retry.Retry;
 
 /**
  * HTTP-based MCP client using WebClient. Endpoints are mapped to a simple REST shape.
@@ -13,9 +16,15 @@ import reactor.core.publisher.Mono;
 public class RestMcpClient implements McpClient {
 
     private final WebClient client;
+    private final Retry retrySpec;
 
     public RestMcpClient(WebClient client) {
+        this(client, defaultRetry());
+    }
+
+    public RestMcpClient(WebClient client, Retry retrySpec) {
         this.client = Objects.requireNonNull(client, "client must not be null");
+        this.retrySpec = Objects.requireNonNull(retrySpec, "retrySpec must not be null");
     }
 
     @Override
@@ -92,16 +101,31 @@ public class RestMcpClient implements McpClient {
     }
 
     private Mono<String> handle(WebClient.RequestHeadersSpec<?> spec) {
-        return spec
-            .retrieve()
-            .onStatus(
-                status -> status.isError(),
-                response -> response.bodyToMono(String.class)
+        return spec.exchangeToMono(response ->
+                response.bodyToMono(String.class)
                     .defaultIfEmpty("")
-                    .map(body -> new IllegalStateException("MCP HTTP " + response.statusCode().value() + ": " + body))
+                    .flatMap(body -> response.statusCode().is2xxSuccessful()
+                        ? Mono.just(body)
+                        : Mono.error(new McpClientException(response.statusCode().value(), body))
+                    )
             )
-            .bodyToMono(String.class)
+            .retryWhen(retrySpec)
             .onErrorMap(WebClientResponseException.class, ex ->
-                new IllegalStateException("MCP HTTP " + ex.getRawStatusCode() + ": " + ex.getResponseBodyAsString(), ex));
+                new McpClientException(ex.getRawStatusCode(), ex.getResponseBodyAsString(), ex))
+            .onErrorMap(WebClientRequestException.class, ex ->
+                new McpClientException(-1, ex.getMessage(), ex));
+    }
+
+    private static Retry defaultRetry() {
+        return Retry
+            .backoff(2, Duration.ofMillis(200))
+            .filter(RestMcpClient::isRetryable);
+    }
+
+    private static boolean isRetryable(Throwable throwable) {
+        if (throwable instanceof McpClientException ex) {
+            return ex.getStatus() == -1 || (ex.getStatus() >= 500 && ex.getStatus() < 600);
+        }
+        return throwable instanceof WebClientRequestException;
     }
 }
