@@ -10,6 +10,7 @@ import org.springframework.ai.chat.messages.SystemMessage;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.model.tool.ToolCallingChatOptions;
+import org.springframework.ai.tool.definition.ToolDefinition;
 import org.springframework.ai.tool.ToolCallback;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -115,6 +116,15 @@ public class DefaultAiAgentService implements AiAgentService {
         List<Message> promptMessages = messages.stream()
             .map(this::toPromptMessage)
             .toList();
+
+        // prepend a guardrail system message describing allowed tools
+        if (!allowedTools.isEmpty()) {
+            String toolList = String.join(", ", allowedTools);
+            List<Message> augmented = new ArrayList<>();
+            augmented.add(new SystemMessage("You may call tools from this allowed list only: " + toolList));
+            augmented.addAll(promptMessages);
+            promptMessages = augmented;
+        }
 
         List<ToolCallback> allowedCallbacks = filterToolCallbacks(allowedTools);
         if (!allowedCallbacks.isEmpty()) {

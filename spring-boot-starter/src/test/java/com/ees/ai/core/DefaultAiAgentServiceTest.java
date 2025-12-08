@@ -9,6 +9,8 @@ import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.model.Generation;
 import org.springframework.ai.chat.model.StreamingChatModel;
 import org.springframework.ai.chat.prompt.Prompt;
+import org.springframework.ai.tool.ToolCallback;
+import org.springframework.ai.tool.definition.DefaultToolDefinition;
 import reactor.core.publisher.Flux;
 import reactor.test.StepVerifier;
 
@@ -89,9 +91,68 @@ class DefaultAiAgentServiceTest {
             .hasMessageContaining("Unknown tools");
     }
 
+    @Test
+    void shouldInjectAllowedToolsGuardAndCallbacks() {
+        InMemoryAiSessionService sessionService = new InMemoryAiSessionService();
+        DefaultAiToolRegistry toolRegistry = new DefaultAiToolRegistry();
+        toolRegistry.register(new AiTool("listNodes", "List nodes"));
+        toolRegistry.register(new AiTool("describeTopology", "Describe topology"));
+        AiAgentProperties props = new AiAgentProperties();
+
+        StubChatModel chatModel = new StubChatModel(List.of(new Generation(new AssistantMessage("ok"))));
+        StubStreamingChatModel streamingModel = new StubStreamingChatModel(List.of());
+
+        ToolCallback tool1 = toolCallback("listNodes");
+        ToolCallback tool2 = toolCallback("describeTopology");
+
+        DefaultAiAgentService service = new DefaultAiAgentService(
+            chatModel, streamingModel, sessionService, toolRegistry, props, List.of(tool1, tool2));
+
+        AiRequest request = new AiRequest("sess-4", "user-4", List.of(new AiMessage("user", "hi")), List.of("listNodes"), false);
+
+        service.chat(request).block();
+
+        Prompt prompt = chatModel.lastPrompt;
+        Assertions.assertThat(prompt.getInstructions().get(0))
+            .isInstanceOfSatisfying(org.springframework.ai.chat.messages.SystemMessage.class,
+                m -> Assertions.assertThat(m.getText()).contains("listNodes"));
+
+        org.springframework.ai.model.tool.DefaultToolCallingChatOptions options =
+            (org.springframework.ai.model.tool.DefaultToolCallingChatOptions) prompt.getOptions();
+
+        Assertions.assertThat(options.getToolCallbacks())
+            .hasSize(1)
+            .first()
+            .extracting(cb -> cb.getToolDefinition().name())
+            .isEqualTo("listNodes");
+        Assertions.assertThat(options.getToolNames()).containsExactly("listNodes");
+    }
+
+    private ToolCallback toolCallback(String name) {
+        return new ToolCallback() {
+            private final org.springframework.ai.tool.definition.ToolDefinition definition =
+                DefaultToolDefinition.builder()
+                    .name(name)
+                    .description(name)
+                    .inputSchema("{}")
+                    .build();
+
+            @Override
+            public org.springframework.ai.tool.definition.ToolDefinition getToolDefinition() {
+                return definition;
+            }
+
+            @Override
+            public String call(String request) {
+                return "";
+            }
+        };
+    }
+
     private static class StubChatModel implements ChatModel {
 
         private final List<Generation> generations;
+        Prompt lastPrompt;
 
         StubChatModel(List<Generation> generations) {
             this.generations = generations;
@@ -99,6 +160,7 @@ class DefaultAiAgentServiceTest {
 
         @Override
         public ChatResponse call(Prompt prompt) {
+            this.lastPrompt = prompt;
             return new ChatResponse(generations);
         }
     }
