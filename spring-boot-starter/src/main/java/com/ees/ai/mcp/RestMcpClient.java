@@ -4,6 +4,7 @@ import java.util.Map;
 import java.util.Objects;
 import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 import reactor.core.publisher.Mono;
 
 /**
@@ -19,86 +20,88 @@ public class RestMcpClient implements McpClient {
 
     @Override
     public Mono<String> listNodes() {
-        return client.get().uri("/mcp/nodes").retrieve().bodyToMono(String.class);
+        return handle(client.get().uri("/mcp/nodes"));
     }
 
     @Override
     public Mono<String> describeTopology() {
-        return client.get().uri("/mcp/topology").retrieve().bodyToMono(String.class);
+        return handle(client.get().uri("/mcp/topology"));
     }
 
     @Override
     public Mono<String> startWorkflow(String workflowId, Map<String, Object> params) {
-        return client.post()
+        return handle(client.post()
             .uri(uriBuilder -> uriBuilder.path("/mcp/workflows/{workflowId}/start").build(workflowId))
-            .body(BodyInserters.fromValue(params))
-            .retrieve()
-            .bodyToMono(String.class);
+            .body(BodyInserters.fromValue(params)));
     }
 
     @Override
     public Mono<String> pauseWorkflow(String executionId) {
-        return client.post()
+        return handle(client.post()
             .uri(uriBuilder -> uriBuilder.path("/mcp/workflows/{executionId}/pause").build(executionId))
-            .retrieve()
-            .bodyToMono(String.class);
+        );
     }
 
     @Override
     public Mono<String> resumeWorkflow(String executionId) {
-        return client.post()
+        return handle(client.post()
             .uri(uriBuilder -> uriBuilder.path("/mcp/workflows/{executionId}/resume").build(executionId))
-            .retrieve()
-            .bodyToMono(String.class);
+        );
     }
 
     @Override
     public Mono<String> cancelWorkflow(String executionId) {
-        return client.post()
+        return handle(client.post()
             .uri(uriBuilder -> uriBuilder.path("/mcp/workflows/{executionId}/cancel").build(executionId))
-            .retrieve()
-            .bodyToMono(String.class);
+        );
     }
 
     @Override
     public Mono<String> getWorkflowState(String executionId) {
-        return client.get()
+        return handle(client.get()
             .uri(uriBuilder -> uriBuilder.path("/mcp/workflows/{executionId}").build(executionId))
-            .retrieve()
-            .bodyToMono(String.class);
+        );
     }
 
     @Override
     public Mono<String> assignKey(String group, String partition, String key, String appId) {
-        return client.post()
+        return handle(client.post()
             .uri("/mcp/assignments")
             .body(BodyInserters.fromValue(Map.of(
                 "group", group,
                 "partition", partition,
                 "key", key,
                 "appId", appId
-            )))
-            .retrieve()
-            .bodyToMono(String.class);
+            ))));
     }
 
     @Override
     public Mono<String> lock(String name, long ttlSeconds) {
-        return client.post()
+        return handle(client.post()
             .uri("/mcp/locks")
             .body(BodyInserters.fromValue(Map.of(
                 "name", name,
                 "ttlSeconds", ttlSeconds
-            )))
-            .retrieve()
-            .bodyToMono(String.class);
+            ))));
     }
 
     @Override
     public Mono<String> releaseLock(String name) {
-        return client.delete()
-            .uri(uriBuilder -> uriBuilder.path("/mcp/locks/{name}").build(name))
+        return handle(client.delete()
+            .uri(uriBuilder -> uriBuilder.path("/mcp/locks/{name}").build(name)));
+    }
+
+    private Mono<String> handle(WebClient.RequestHeadersSpec<?> spec) {
+        return spec
             .retrieve()
-            .bodyToMono(String.class);
+            .onStatus(
+                status -> status.isError(),
+                response -> response.bodyToMono(String.class)
+                    .defaultIfEmpty("")
+                    .map(body -> new IllegalStateException("MCP HTTP " + response.statusCode().value() + ": " + body))
+            )
+            .bodyToMono(String.class)
+            .onErrorMap(WebClientResponseException.class, ex ->
+                new IllegalStateException("MCP HTTP " + ex.getRawStatusCode() + ": " + ex.getResponseBodyAsString(), ex));
     }
 }
