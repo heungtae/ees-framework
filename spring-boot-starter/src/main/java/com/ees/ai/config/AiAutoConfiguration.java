@@ -74,10 +74,13 @@ public class AiAutoConfiguration {
     public WebClient mcpWebClient(McpProperties properties) {
         HttpClient httpClient = HttpClient.create()
             .responseTimeout(java.time.Duration.ofMillis(properties.getTimeoutMillis()));
-        return WebClient.builder()
+        WebClient.Builder builder = WebClient.builder()
             .baseUrl(properties.getBaseUrl())
-            .clientConnector(new ReactorClientHttpConnector(httpClient))
-            .build();
+            .clientConnector(new ReactorClientHttpConnector(httpClient));
+        if (properties.getAuthToken() != null && !properties.getAuthToken().isBlank()) {
+            builder.defaultHeader("Authorization", "Bearer " + properties.getAuthToken());
+        }
+        return builder.build();
     }
 
     @Bean

@@ -15,6 +15,11 @@ public class McpProperties {
      */
     private long timeoutMillis = 5000;
 
+    /**
+     * Optional Bearer token for MCP HTTP calls.
+     */
+    private String authToken;
+
     public String getBaseUrl() {
         return baseUrl;
     }
@@ -29,5 +34,13 @@ public class McpProperties {
 
     public void setTimeoutMillis(long timeoutMillis) {
         this.timeoutMillis = timeoutMillis;
+    }
+
+    public String getAuthToken() {
+        return authToken;
+    }
+
+    public void setAuthToken(String authToken) {
+        this.authToken = authToken;
     }
 }
