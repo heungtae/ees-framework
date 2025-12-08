@@ -25,7 +25,7 @@ class DefaultAiAgentServiceTest {
         StubChatModel chatModel = new StubChatModel(List.of(new Generation(new AssistantMessage("hello"))));
         StubStreamingChatModel streamingModel = new StubStreamingChatModel(List.of());
 
-        DefaultAiAgentService service = new DefaultAiAgentService(chatModel, streamingModel, sessionService, toolRegistry, props);
+        DefaultAiAgentService service = new DefaultAiAgentService(chatModel, streamingModel, sessionService, toolRegistry, props, List.of());
 
         AiRequest request = new AiRequest("sess-1", "user-1", List.of(new AiMessage("user", "hi")), List.of(), false);
 
@@ -54,7 +54,7 @@ class DefaultAiAgentServiceTest {
             new ChatResponse(List.of(new Generation(new AssistantMessage("llo"))))
         ));
 
-        DefaultAiAgentService service = new DefaultAiAgentService(chatModel, streamingModel, sessionService, toolRegistry, props);
+        DefaultAiAgentService service = new DefaultAiAgentService(chatModel, streamingModel, sessionService, toolRegistry, props, List.of());
 
         AiRequest request = new AiRequest("sess-2", "user-2", List.of(new AiMessage("user", "hi")), List.of(), true);
 
@@ -80,7 +80,7 @@ class DefaultAiAgentServiceTest {
         StubChatModel chatModel = new StubChatModel(List.of(new Generation(new AssistantMessage("ok"))));
         StubStreamingChatModel streamingModel = new StubStreamingChatModel(List.of());
 
-        DefaultAiAgentService service = new DefaultAiAgentService(chatModel, streamingModel, sessionService, toolRegistry, props);
+        DefaultAiAgentService service = new DefaultAiAgentService(chatModel, streamingModel, sessionService, toolRegistry, props, List.of());
 
         AiRequest request = new AiRequest("sess-3", "user-3", List.of(new AiMessage("user", "hi")), List.of("deleteAll"), false);
 

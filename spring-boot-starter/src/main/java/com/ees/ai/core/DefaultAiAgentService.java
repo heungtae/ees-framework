@@ -9,12 +9,15 @@ import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.SystemMessage;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.prompt.Prompt;
+import org.springframework.ai.model.tool.ToolCallingChatOptions;
+import org.springframework.ai.tool.ToolCallback;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -25,17 +28,20 @@ public class DefaultAiAgentService implements AiAgentService {
     private final AiSessionService aiSessionService;
     private final AiToolRegistry aiToolRegistry;
     private final AiAgentProperties aiAgentProperties;
+    private final List<ToolCallback> toolCallbacks;
 
     public DefaultAiAgentService(ChatModel chatModel,
                                  StreamingChatModel streamingChatModel,
                                  AiSessionService aiSessionService,
                                  AiToolRegistry aiToolRegistry,
-                                 AiAgentProperties aiAgentProperties) {
+                                 AiAgentProperties aiAgentProperties,
+                                 List<ToolCallback> toolCallbacks) {
         this.chatModel = chatModel;
         this.streamingChatModel = streamingChatModel;
         this.aiSessionService = aiSessionService;
         this.aiToolRegistry = aiToolRegistry;
         this.aiAgentProperties = aiAgentProperties;
+        this.toolCallbacks = Objects.requireNonNullElseGet(toolCallbacks, List::of);
     }
 
     @Override
@@ -47,7 +53,7 @@ public class DefaultAiAgentService implements AiAgentService {
             return chatStream(request).last();
         }
         return prepareContext(request)
-            .flatMap(ctx -> Mono.fromCallable(() -> chatModel.call(buildPrompt(ctx.promptMessages())))
+            .flatMap(ctx -> Mono.fromCallable(() -> chatModel.call(buildPrompt(ctx.promptMessages(), ctx.toolsAllowed())))
                 .map(this::extractContent)
                 .flatMap(content -> persistAssistantMessage(request.sessionId(), content)
                     .thenReturn(new AiResponse(request.sessionId(), content, false))));
@@ -63,7 +69,7 @@ public class DefaultAiAgentService implements AiAgentService {
         return prepareContext(request)
             .flatMapMany(ctx -> {
                 StringBuilder buffer = new StringBuilder();
-                return streamingChatModel.stream(buildPrompt(ctx.promptMessages()))
+                return streamingChatModel.stream(buildPrompt(ctx.promptMessages(), ctx.toolsAllowed()))
                     .map(this::extractContent)
                     .filter(chunk -> chunk != null && !chunk.isBlank())
                     .map(chunk -> {
@@ -105,11 +111,29 @@ public class DefaultAiAgentService implements AiAgentService {
         return messages;
     }
 
-    private Prompt buildPrompt(List<AiMessage> messages) {
+    private Prompt buildPrompt(List<AiMessage> messages, Set<String> allowedTools) {
         List<Message> promptMessages = messages.stream()
             .map(this::toPromptMessage)
             .toList();
+
+        List<ToolCallback> allowedCallbacks = filterToolCallbacks(allowedTools);
+        if (!allowedCallbacks.isEmpty()) {
+            org.springframework.ai.model.tool.DefaultToolCallingChatOptions options =
+                new org.springframework.ai.model.tool.DefaultToolCallingChatOptions();
+            options.setToolCallbacks(allowedCallbacks);
+            options.setToolNames(allowedTools);
+            return new Prompt(promptMessages, options);
+        }
         return new Prompt(promptMessages);
+    }
+
+    private List<ToolCallback> filterToolCallbacks(Set<String> allowedTools) {
+        if (allowedTools.isEmpty() || toolCallbacks.isEmpty()) {
+            return List.of();
+        }
+        return toolCallbacks.stream()
+            .filter(cb -> allowedTools.contains(cb.getToolDefinition().name()))
+            .toList();
     }
 
     private Message toPromptMessage(AiMessage message) {
@@ -181,6 +205,10 @@ public class DefaultAiAgentService implements AiAgentService {
 
     public StreamingChatModel getStreamingChatModel() {
         return streamingChatModel;
+    }
+
+    public List<ToolCallback> getToolCallbacks() {
+        return toolCallbacks;
     }
 
     private record ChatContext(List<AiMessage> promptMessages, Set<String> toolsAllowed) {

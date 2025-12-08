@@ -10,8 +10,10 @@ import com.ees.ai.support.NoOpChatModel;
 import com.ees.ai.mcp.DefaultMcpClient;
 import com.ees.ai.mcp.McpClient;
 import com.ees.ai.mcp.McpToolBridge;
+import java.util.List;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.model.StreamingChatModel;
+import org.springframework.ai.tool.ToolCallback;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -41,8 +43,9 @@ public class AiAutoConfiguration {
                                          StreamingChatModel streamingChatModel,
                                          AiSessionService aiSessionService,
                                          AiToolRegistry aiToolRegistry,
-                                         AiAgentProperties aiAgentProperties) {
-        return new DefaultAiAgentService(chatModel, streamingChatModel, aiSessionService, aiToolRegistry, aiAgentProperties);
+                                         AiAgentProperties aiAgentProperties,
+                                         List<ToolCallback> toolCallbacks) {
+        return new DefaultAiAgentService(chatModel, streamingChatModel, aiSessionService, aiToolRegistry, aiAgentProperties, toolCallbacks);
     }
 
     @Bean
@@ -55,6 +58,12 @@ public class AiAutoConfiguration {
     @ConditionalOnMissingBean
     public McpToolBridge mcpToolBridge(McpClient mcpClient, AiToolRegistry aiToolRegistry) {
         return new McpToolBridge(mcpClient, aiToolRegistry);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(name = "mcpToolCallbacks")
+    public List<ToolCallback> mcpToolCallbacks(McpToolBridge bridge) {
+        return bridge.toolCallbacks();
     }
 
     @Bean
