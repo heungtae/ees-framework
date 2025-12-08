@@ -27,6 +27,10 @@
         </dependency>
         <dependency>
             <groupId>com.ees</groupId>
+            <artifactId>ees-ai-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.ees</groupId>
             <artifactId>ees-source</artifactId>
         </dependency>
         <dependency>
@@ -48,11 +52,6 @@
         <dependency>
             <groupId>com.ees</groupId>
             <artifactId>ees-metadata-store</artifactId>
-        </dependency>
-        <!-- https://mvnrepository.com/artifact/org.springframework.ai/spring-ai-openai -->
-        <dependency>
-            <groupId>org.springframework.ai</groupId>
-            <artifactId>spring-ai-openai</artifactId>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>

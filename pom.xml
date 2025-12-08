@@ -22,6 +22,7 @@
         <module>pipeline</module>
         <module>sink</module>
         <module>workflow</module>
+        <module>ai-core</module>
         <module>spring-boot-starter</module>
         <module>example</module>
         <module>application</module>
@@ -96,6 +97,11 @@
             <dependency>
                 <groupId>com.ees</groupId>
                 <artifactId>ees-workflow</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.ees</groupId>
+                <artifactId>ees-ai-core</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>

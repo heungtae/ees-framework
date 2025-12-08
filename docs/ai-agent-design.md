@@ -7,14 +7,14 @@
 - LLM 연동은 Spring AI 기반으로 공급자 이식성과 툴 콜링 확보.
 
 ## 아키텍처 개요
-- **ai-core(신규)**: Spring AI `ChatModel`/`StreamingChatModel`, 툴 레지스트리, 세션/히스토리 서비스.
+- **ai-core(신규 모듈)**: Spring AI `ChatModel`/`StreamingChatModel`, 툴 레지스트리, 세션/히스토리 서비스.
 - **MCP 브리지**: Spring AI 함수 호출을 내부 MCP 명령(클러스터/워크플로/메타데이터)로 변환하는 툴.
 - **워크플로 연동**: 워크플로 DSL의 `AiAgentStep`이 Spring AI와 툴 화이트리스트를 사용해 실행 중 액션 수행.
 - **Web UI/API**: WebFlux REST + WebSocket/SSE 엔드포인트로 채팅을 구동; UI는 스트리밍 토큰과 구조화된 툴 결과를 소비.
 - **보안/운영**: 역할별 툴 화이트리스트, 레이트 리밋, MCP 명령/에이전트 액션 감사 로그.
 
 ## 모듈 및 배치
-- `ai-core`(새 모듈이거나 `spring-boot-starter` 내부):
+- `ai-core`(별도 모듈):
   - 빈: `ChatModel`, `StreamingChatModel`, `AiAgentService`, `AiToolRegistry`, `AiSessionService`.
   - 설정: `ees.ai.model`, `ees.ai.streaming-enabled`, `ees.ai.tools.allowed[]`, `ees.ai.history.store`, `ees.ai.rate-limit.*`.
   - 의존: Spring AI 스타터(`spring-ai-spring-boot-starter`).
