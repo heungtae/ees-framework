@@ -114,19 +114,21 @@
 - [x] Spring AI 의존성 추가 및 AI 코어 스켈레톤 빈(AiAgentService/Session/Tool 레지스트리) 등록
 - [x] 워크플로/클러스터 부트 시 필요한 기본 설정(클러스터 포트 기본값, 워크플로 자동 설정 임포트) 복원
 - [x] 루트 빌드/테스트 통과 확인(`mvn clean install`)
-- [ ] MCP 툴 브리지 구현 및 툴 화이트리스트 적용
-- [ ] REST/SSE API + Chat UI 스텁 노출
-- [ ] `AiAgentStep` 워크플로 통합 및 보안/관측 적용
+- [x] MCP 툴 브리지 구현 및 툴 화이트리스트 적용 (Spring AI ToolCallback + MCP 호출/감사 스텁 포함)
+- [x] REST/SSE API + Chat UI 스텁 노출 및 기본 검증 추가
+- [x] `AiAgentStep` 워크플로 통합(파이프라인 스텝) 및 기본 테스트 추가
 
 ## 다음 단계
-- `AiAgentService.chat` 구현: ChatModel/StreamingChatModel 호출, 히스토리 저장, toolsAllowed 집행 포함.
-- MCP 클라이언트 툴 브리지 ToolCallback 추가 및 감사 훅 연결; AiToolRegistry에 기본 툴 등록.
-- REST/SSE 엔드포인트와 최소 UI 스텁 추가하여 스트리밍 응답/툴 결과 소비 경로 확보.
-- 워크플로 DSL에 `AiAgentStep` 삽입 및 테스트 추가; 레이트 리밋/메트릭/감사 연동.
+- MCP transport를 실제 스펙에 맞게 연결하고 오류 매핑/인증/타임아웃/재시도 정책 적용.
+- AiAgentService 모델 호출에 toolsAllowed 가드를 모델 옵션/프롬프트에 반영하고 Spring AI ToolCallback 연동 강화를 지속.
+- 레이트 리밋, 메트릭, 감사 로그 등 관측/보안 훅 연동.
+- REST/SSE API와 Chat UI에 파라미터 검증, 위험 명령 승인, MCP 리소스 브라우저 등을 추가.
+- 워크플로 DSL 샘플 그래프/테스트에 AiAgentStep을 포함하고 에러/재시도/화이트리스트 처리 강화.
+- 히스토리 저장소 플러그인(metadata-store/Redis 등) 추가.
 
 ## 남은 과제 체크리스트
-- [ ] MCP 클라이언트/ToolCallback를 실제 MCP transport와 연결하고 감사 훅 적용
-- [ ] AiAgentService 모델 호출 시 toolsAllowed/프롬프트 가드 적용 및 Spring AI ToolCallback 연동
+- [ ] MCP 클라이언트/ToolCallback를 실제 MCP transport와 연결하고 오류 매핑·인증·재시도 적용
+- [ ] AiAgentService 모델 호출 시 toolsAllowed/프롬프트 가드 적용 및 Spring AI ToolCallback 연동 강화
 - [ ] 레이트 리밋, 메트릭, 감사 로그 등의 관측·보안 훅 구현
 - [ ] REST/SSE API 및 Chat UI에 파라미터 검증·오류/승인 프롬프트·MCP 리소스 브라우저 추가
 - [ ] 워크플로 DSL 샘플 그래프/테스트에 AiAgentStep 통합 및 에러/재시도/툴 화이트리스트 처리
