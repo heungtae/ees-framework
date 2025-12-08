@@ -228,7 +228,7 @@ public class ClusterStateMachine extends BaseStateMachine {
         }
     }
 
-    private void loadSnapshot() {
+    protected void loadSnapshot() {
         try {
             snapshotStore.loadLatest(groupIdAsString())
                     .ifPresent(snapshot -> {
@@ -244,7 +244,7 @@ public class ClusterStateMachine extends BaseStateMachine {
         }
     }
 
-    private void restoreSnapshot(ClusterSnapshot snapshot) {
+    protected void restoreSnapshot(ClusterSnapshot snapshot) {
         assignmentService.restoreSnapshot(snapshot.groupId(), snapshot.assignments(), snapshot.keyAssignments());
         lockService.restoreLocks(snapshot.locks());
         metrics.setGroupId(snapshot.groupId());
@@ -279,7 +279,7 @@ public class ClusterStateMachine extends BaseStateMachine {
         return new LeaderProcessingGuard(leaderElectionService, groupIdAsString(), nodeId, safeModeGuard);
     }
 
-    private String groupIdAsString() {
+    protected String groupIdAsString() {
         RaftGroupId groupId = getGroupId();
         if (groupId == null) {
             return "unknown";
