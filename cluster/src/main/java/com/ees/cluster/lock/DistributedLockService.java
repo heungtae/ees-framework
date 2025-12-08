@@ -16,4 +16,20 @@ public interface DistributedLockService {
     Mono<Boolean> release(String lockName, String ownerNodeId);
 
     Mono<Optional<LockRecord>> getLock(String lockName);
+
+    /**
+     * Snapshot view of all known locks. Default implementation returns an empty map for services that
+     * do not retain lock state locally.
+     */
+    default Map<String, LockRecord> snapshotLocks() {
+        return Map.of();
+    }
+
+    /**
+     * Restore locks from a snapshot. Default implementation is a no-op for services that cannot
+     * persist locks directly.
+     */
+    default void restoreLocks(Map<String, LockRecord> locks) {
+        // no-op
+    }
 }

@@ -94,6 +94,27 @@ public class DefaultDistributedLockService implements DistributedLockService {
         return repository.get(lockKey(lockName), LockRecord.class);
     }
 
+    @Override
+    public Map<String, LockRecord> snapshotLocks() {
+        return repository.scan(LOCK_PREFIX, LockRecord.class)
+                .collectMap(record -> lockKey(record.name()), record -> record)
+                .blockOptional()
+                .orElse(Map.of());
+    }
+
+    @Override
+    public void restoreLocks(Map<String, LockRecord> locks) {
+        Objects.requireNonNull(locks, "locks must not be null");
+        Instant now = clock.instant();
+        locks.forEach((key, record) -> {
+            if (record.isExpired(now)) {
+                return;
+            }
+            Duration ttl = Duration.between(now, record.leaseUntil());
+            repository.put(key, record, ttl.isNegative() ? Duration.ZERO : ttl).block();
+        });
+    }
+
     private String lockKey(String lockName) {
         return LOCK_PREFIX + lockName;
     }

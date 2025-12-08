@@ -12,6 +12,12 @@ import com.ees.cluster.raft.command.RaftCommandEnvelope;
 import com.ees.cluster.raft.command.ReleaseLockCommand;
 import com.ees.cluster.raft.command.RevokePartitionCommand;
 import com.ees.cluster.raft.command.UnassignKeyCommand;
+import com.ees.cluster.raft.snapshot.ClusterSnapshot;
+import com.ees.cluster.raft.snapshot.ClusterSnapshotStore;
+import com.ees.cluster.raft.snapshot.FileClusterSnapshotStore;
+import com.ees.cluster.raft.snapshot.ClusterSnapshotStores;
+import com.ees.cluster.raft.RaftServerConfig;
+import com.ees.cluster.state.ClusterStateRepository;
 import org.apache.ratis.protocol.Message;
 import org.apache.ratis.protocol.RaftGroupId;
 import org.apache.ratis.server.RaftServer;
@@ -28,6 +34,7 @@ import java.time.Duration;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Skeleton state machine that will apply Raft log entries to cluster services.
@@ -35,24 +42,49 @@ import java.util.concurrent.CompletionStage;
 public class ClusterStateMachine extends BaseStateMachine {
 
     private static final Logger log = LoggerFactory.getLogger(ClusterStateMachine.class);
+    private static final long SNAPSHOT_VERSION = 1;
 
     private final RaftAssignmentService assignmentService;
     private final DistributedLockService lockService;
     private final Clock clock;
+    private final ClusterSnapshotStore snapshotStore;
+    private final long snapshotThreshold;
+    private final AtomicLong appliedSinceSnapshot = new AtomicLong();
 
     public ClusterStateMachine(RaftAssignmentService assignmentService, DistributedLockService lockService) {
-        this(assignmentService, lockService, Clock.systemUTC());
+        this(assignmentService, lockService, new FileClusterSnapshotStore(java.nio.file.Path.of("data/raft/snapshots")));
     }
 
-    public ClusterStateMachine(RaftAssignmentService assignmentService, DistributedLockService lockService, Clock clock) {
+    public ClusterStateMachine(RaftAssignmentService assignmentService,
+                               DistributedLockService lockService,
+                               ClusterSnapshotStore snapshotStore) {
+        this(assignmentService, lockService, snapshotStore, Clock.systemUTC(), 1_000L);
+    }
+
+    public ClusterStateMachine(RaftAssignmentService assignmentService,
+                               DistributedLockService lockService,
+                               ClusterSnapshotStore snapshotStore,
+                               Clock clock,
+                               long snapshotThreshold) {
         this.assignmentService = Objects.requireNonNull(assignmentService, "assignmentService must not be null");
         this.lockService = Objects.requireNonNull(lockService, "lockService must not be null");
+        this.snapshotStore = Objects.requireNonNull(snapshotStore, "snapshotStore must not be null");
         this.clock = Objects.requireNonNull(clock, "clock must not be null");
+        this.snapshotThreshold = snapshotThreshold;
+    }
+
+    public static ClusterStateMachine forConfig(RaftAssignmentService assignmentService,
+                                                DistributedLockService lockService,
+                                                ClusterStateRepository repository,
+                                                RaftServerConfig config) {
+        ClusterSnapshotStore store = ClusterSnapshotStores.forConfig(config, repository);
+        return new ClusterStateMachine(assignmentService, lockService, store, Clock.systemUTC(), config.getSnapshotThreshold());
     }
 
     @Override
     public void initialize(RaftServer server, RaftGroupId groupId, RaftStorage storage) throws IOException {
         super.initialize(server, groupId, storage);
+        loadSnapshot();
         log.info("Initialized ClusterStateMachine for group {}", groupId);
     }
 
@@ -69,6 +101,7 @@ public class ClusterStateMachine extends BaseStateMachine {
         try {
             RaftCommandEnvelope envelope = RaftCommandCodec.deserialize(data);
             return handleCommand(envelope)
+                    .whenComplete((ignored, error) -> maybeTriggerSnapshot())
                     .thenApply(ignored -> Message.valueOf(envelope.type().name()))
                     .toCompletableFuture();
         } catch (Exception e) {
@@ -80,14 +113,28 @@ public class ClusterStateMachine extends BaseStateMachine {
     @Override
     public long takeSnapshot() throws IOException {
         TermIndex index = getLastAppliedTermIndex();
-        // TODO: persist lock and assignment state to snapshot store.
-        log.info("Taking snapshot at {}", index);
-        return index != null ? index.getIndex() : -1L;
+        long term = index != null ? index.getTerm() : -1L;
+        long logIndex = index != null ? index.getIndex() : -1L;
+        ClusterSnapshot snapshot = new ClusterSnapshot(
+                SNAPSHOT_VERSION,
+                groupIdAsString(),
+                term,
+                logIndex,
+                clock.instant(),
+                lockService.snapshotLocks(),
+                assignmentService.snapshotAssignments(groupIdAsString()),
+                assignmentService.snapshotKeyAssignments(groupIdAsString())
+        );
+        snapshotStore.persist(snapshot);
+        appliedSinceSnapshot.set(0L);
+        log.info("Taking snapshot at term={}, index={} (takenAt={})", term, logIndex, snapshot.takenAt());
+        return logIndex;
     }
 
     @Override
     public void reinitialize() throws IOException {
         super.reinitialize();
+        loadSnapshot();
         log.info("Reinitialized ClusterStateMachine for group {}", getGroupId());
     }
 
@@ -134,5 +181,55 @@ public class ClusterStateMachine extends BaseStateMachine {
                         .toFuture();
             }
         };
+    }
+
+    private void maybeTriggerSnapshot() {
+        if (snapshotThreshold <= 0) {
+            return;
+        }
+        long applied = appliedSinceSnapshot.incrementAndGet();
+        if (applied < snapshotThreshold) {
+            return;
+        }
+        try {
+            takeSnapshot();
+        } catch (IOException e) {
+            log.warn("Auto snapshot failed for group {}", groupIdAsString(), e);
+        }
+    }
+
+    private void loadSnapshot() {
+        try {
+            snapshotStore.loadLatest(groupIdAsString())
+                    .ifPresent(snapshot -> {
+                        if (snapshot.formatVersion() != SNAPSHOT_VERSION) {
+                            log.warn("Snapshot version mismatch for group {} (expected {}, found {})",
+                                    groupIdAsString(), SNAPSHOT_VERSION, snapshot.formatVersion());
+                            return;
+                        }
+                        restoreSnapshot(snapshot);
+                    });
+        } catch (IOException e) {
+            log.warn("Failed to load snapshot for group {}", groupIdAsString(), e);
+        }
+    }
+
+    private void restoreSnapshot(ClusterSnapshot snapshot) {
+        assignmentService.restoreSnapshot(snapshot.groupId(), snapshot.assignments(), snapshot.keyAssignments());
+        lockService.restoreLocks(snapshot.locks());
+        if (snapshot.term() >= 0 && snapshot.index() >= 0) {
+            updateLastAppliedTermIndex(snapshot.term(), snapshot.index());
+        }
+        appliedSinceSnapshot.set(0L);
+        log.info("Restored snapshot for group {} at term={}, index={}, takenAt={}", snapshot.groupId(),
+                snapshot.term(), snapshot.index(), snapshot.takenAt());
+    }
+
+    private String groupIdAsString() {
+        RaftGroupId groupId = getGroupId();
+        if (groupId == null) {
+            return "unknown";
+        }
+        return groupId.getUuid().toString();
     }
 }

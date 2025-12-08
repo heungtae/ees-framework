@@ -159,6 +159,53 @@ public class RaftAssignmentService implements AssignmentService {
         return sink.asFlux();
     }
 
+    /**
+     * Snapshot view of current assignments for a group. Intended for state machine snapshots.
+     */
+    public Map<Integer, Assignment> snapshotAssignments(String groupId) {
+        Objects.requireNonNull(groupId, "groupId must not be null");
+        Map<Integer, Assignment> group = cache.getOrDefault(groupId, Map.of());
+        return Map.copyOf(group);
+    }
+
+    /**
+     * Snapshot view of current key assignments for a group.
+     */
+    public Map<Integer, Map<String, KeyAssignment>> snapshotKeyAssignments(String groupId) {
+        Objects.requireNonNull(groupId, "groupId must not be null");
+        Map<Integer, Map<String, KeyAssignment>> group = keyCache.getOrDefault(groupId, Map.of());
+        return group.entrySet().stream()
+                .collect(java.util.stream.Collectors.toUnmodifiableMap(
+                        Map.Entry::getKey,
+                        entry -> Map.copyOf(entry.getValue())
+                ));
+    }
+
+    /**
+     * Restore assignments and key assignments from a snapshot into both cache and backing repository.
+     */
+    public void restoreSnapshot(String groupId,
+                                Map<Integer, Assignment> assignments,
+                                Map<Integer, Map<String, KeyAssignment>> keyAssignments) {
+        Objects.requireNonNull(groupId, "groupId must not be null");
+        Objects.requireNonNull(assignments, "assignments must not be null");
+        Objects.requireNonNull(keyAssignments, "keyAssignments must not be null");
+        Map<Integer, Assignment> group = cache.computeIfAbsent(groupId, ignored -> new ConcurrentHashMap<>());
+        group.clear();
+        group.putAll(assignments);
+        assignments.values().forEach(assignment ->
+                repository.put(assignmentKey(groupId, assignment.partition()), assignment, ttl).block());
+
+        Map<Integer, Map<String, KeyAssignment>> groupKeys =
+                keyCache.computeIfAbsent(groupId, ignored -> new ConcurrentHashMap<>());
+        groupKeys.clear();
+        keyAssignments.forEach((partition, keys) -> {
+            Map<String, KeyAssignment> copy = new ConcurrentHashMap<>(keys);
+            groupKeys.put(partition, copy);
+            copy.forEach((key, value) -> repository.put(keyAssignmentKey(groupId, partition, key), value, ttl).block());
+        });
+    }
+
     private String assignmentKey(String groupId, int partition) {
         return ASSIGNMENTS_PREFIX + groupId + "/" + partition;
     }
