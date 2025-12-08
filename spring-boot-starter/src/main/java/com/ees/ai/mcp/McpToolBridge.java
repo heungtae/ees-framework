@@ -4,6 +4,8 @@ import com.ees.ai.core.AiTool;
 import com.ees.ai.core.AiToolRegistry;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
 
 import java.util.List;
@@ -16,13 +18,17 @@ import java.util.function.Function;
  */
 public class McpToolBridge {
 
+    private static final Logger log = LoggerFactory.getLogger(McpToolBridge.class);
+
     private final McpClient mcpClient;
     private final AiToolRegistry aiToolRegistry;
     private final ObjectMapper objectMapper = new ObjectMapper();
+    private final McpAuditService auditService;
 
-    public McpToolBridge(McpClient mcpClient, AiToolRegistry aiToolRegistry) {
+    public McpToolBridge(McpClient mcpClient, AiToolRegistry aiToolRegistry, McpAuditService auditService) {
         this.mcpClient = Objects.requireNonNull(mcpClient, "mcpClient must not be null");
         this.aiToolRegistry = Objects.requireNonNull(aiToolRegistry, "aiToolRegistry must not be null");
+        this.auditService = Objects.requireNonNull(auditService, "auditService must not be null");
         registerDefaultTools();
     }
 
@@ -55,7 +61,8 @@ public class McpToolBridge {
     }
 
     public Mono<String> invoke(String toolName, Map<String, Object> args) {
-        return switch (toolName) {
+        log.info("Invoking MCP tool: {} args={}", toolName, args);
+        Mono<String> call = switch (toolName) {
             case "listNodes" -> mcpClient.listNodes();
             case "describeTopology" -> mcpClient.describeTopology();
             case "startWorkflow" ->
@@ -80,6 +87,9 @@ public class McpToolBridge {
                 mcpClient.releaseLock((String) args.getOrDefault("name", ""));
             default -> Mono.error(new IllegalArgumentException("Unsupported MCP tool: " + toolName));
         };
+        return call
+            .doOnSuccess(result -> auditService.record(toolName, args, result, null))
+            .doOnError(error -> auditService.record(toolName, args, null, error));
     }
 
     private long asLong(Object value, long defaultValue) {
@@ -118,7 +128,11 @@ public class McpToolBridge {
             @Override
             public String call(String request) {
                 Map<String, Object> args = parseArgs(request);
-                return executor.apply(args).blockOptional().orElse("");
+                return executor.apply(args)
+                    .doOnSuccess(result -> auditService.record(definition.name(), args, result, null))
+                    .doOnError(error -> auditService.record(definition.name(), args, null, error))
+                    .blockOptional()
+                    .orElse("");
             }
         };
     }
