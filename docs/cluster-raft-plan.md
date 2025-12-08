@@ -68,8 +68,8 @@
    - 통합: 3노드 임베디드 Ratis로 리더 전환, 로그 재플레이, 스냅샷 복구.
 
 ## 체크리스트
-- [ ] `RaftServerFactory`와 `ClusterStateMachine` 스켈레톤 작성, 설정 키 연결.
-- [ ] 명령 DTO/JSON 직렬화 유틸 구현 및 락/할당 상태 적용 핸들러 작성.
+- [x] `RaftServerFactory`와 `ClusterStateMachine` 스켈레톤 작성, 설정 키 연결.
+- [x] 명령 DTO/JSON 직렬화 유틸 구현 및 락/할당 상태 적용 핸들러 작성.
 - [ ] 스냅샷 take/load 흐름과 파일/db/kafka-ktable 스토어 플러그형 처리, 포맷 버전 명시.
 - [ ] 메트릭·헬스 노출과 서버 시작/종료 훅 정리.
 - [ ] 리더 전용 처리 규칙과 리밸런스 세이프 모드 가드 추가.
