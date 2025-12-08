@@ -16,6 +16,7 @@ import com.ees.cluster.model.ClusterNode;
 import com.ees.cluster.model.ClusterRole;
 import com.ees.cluster.raft.RaftAssignmentService;
 import com.ees.cluster.raft.RaftLeaderElectionService;
+import com.ees.cluster.raft.RaftStateMachineMetrics;
 import com.ees.cluster.state.ClusterStateRepository;
 import com.ees.cluster.state.MetadataStoreClusterStateRepository;
 import com.ees.metadatastore.InMemoryMetadataStore;
@@ -26,11 +27,15 @@ import org.springframework.boot.actuate.health.HealthIndicator;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
+import org.springframework.beans.factory.ObjectProvider;
 
 import java.util.Set;
+import java.util.List;
+import java.time.Clock;
 
 @AutoConfiguration
 @EnableConfigurationProperties(ClusterProperties.class)
@@ -128,6 +133,18 @@ public class ClusterAutoConfiguration {
     public ClusterMetricsRegistrar clusterMetricsRegistrar(ClusterMembershipService membershipService,
                                                            MeterRegistry meterRegistry) {
         return new ClusterMetricsRegistrar(membershipService, meterRegistry);
+    }
+
+    @Bean
+    @ConditionalOnBean(RaftStateMachineMetrics.class)
+    public RaftMetricsRegistrar raftMetricsRegistrar(ObjectProvider<List<RaftStateMachineMetrics>> metricsProvider) {
+        return new RaftMetricsRegistrar(metricsProvider.getIfAvailable(List::of));
+    }
+
+    @Bean
+    @ConditionalOnBean(RaftStateMachineMetrics.class)
+    public HealthIndicator raftStateMachineHealthIndicator(ObjectProvider<List<RaftStateMachineMetrics>> metricsProvider) {
+        return new RaftStateMachineHealthIndicator(metricsProvider.getIfAvailable(List::of), Clock.systemUTC());
     }
 
     /**

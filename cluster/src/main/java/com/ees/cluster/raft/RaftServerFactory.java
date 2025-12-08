@@ -22,6 +22,7 @@ import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class RaftServerFactory {
 
@@ -32,6 +33,8 @@ public class RaftServerFactory {
     private final Map<RaftGroupId, StateMachine> stateMachines = new ConcurrentHashMap<>();
     private final StateMachine defaultStateMachine = new BaseStateMachine();
     private volatile RaftServer server;
+    private final AtomicBoolean running = new AtomicBoolean(false);
+    private Thread shutdownHook;
 
     public RaftServerFactory(RaftServerConfig config) {
         this.config = Objects.requireNonNull(config, "config must not be null");
@@ -73,6 +76,9 @@ public class RaftServerFactory {
                 .setStateMachineRegistry(this::resolveStateMachine)
                 .setProperties(properties)
                 .build();
+        server.start();
+        running.set(true);
+        registerShutdownHook();
         return server;
     }
 
@@ -86,7 +92,17 @@ public class RaftServerFactory {
             log.warn("Failed to close RaftServer cleanly", e);
         } finally {
             server = null;
+            running.set(false);
+            removeShutdownHook();
         }
+    }
+
+    public boolean isRunning() {
+        return running.get();
+    }
+
+    public RaftServerHealth health() {
+        return new RaftServerHealth(running.get(), groups.size(), stateMachines.size());
     }
 
     private StateMachine resolveStateMachine(RaftGroupId groupId) {
@@ -121,5 +137,24 @@ public class RaftServerFactory {
                 .setClientAddress(id)
                 .setAdminAddress(id)
                 .build();
+    }
+
+    private void registerShutdownHook() {
+        if (shutdownHook != null) {
+            return;
+        }
+        shutdownHook = new Thread(this::stop, "raft-server-shutdown");
+        Runtime.getRuntime().addShutdownHook(shutdownHook);
+    }
+
+    private void removeShutdownHook() {
+        if (shutdownHook != null) {
+            try {
+                Runtime.getRuntime().removeShutdownHook(shutdownHook);
+            } catch (IllegalStateException ignored) {
+                // VM is shutting down.
+            }
+            shutdownHook = null;
+        }
     }
 }
