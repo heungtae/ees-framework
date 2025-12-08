@@ -11,7 +11,9 @@ public record RaftHealthSnapshot(
         long lastSnapshotIndex,
         Instant lastAppliedAt,
         Instant lastSnapshotAt,
-        boolean stale
+        boolean stale,
+        boolean safeMode,
+        String safeModeReason
 ) {
 
     public RaftHealthSnapshot {

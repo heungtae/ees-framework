@@ -27,17 +27,20 @@ public class RaftStateMachineHealthIndicator implements HealthIndicator {
             return Health.unknown().withDetail("raft", "no-state-machines").build();
         }
         boolean allRunning = true;
-        Health.Builder builder = Health.up();
+        Health.Builder details = Health.up();
         for (RaftStateMachineMetrics metrics : metricsList) {
             RaftHealthSnapshot snapshot = metrics.health(clock);
-            builder.withDetail(snapshot.groupId() + ".leader", snapshot.leaderId());
-            builder.withDetail(snapshot.groupId() + ".appliedIndex", snapshot.lastAppliedIndex());
-            builder.withDetail(snapshot.groupId() + ".snapshotIndex", snapshot.lastSnapshotIndex());
-            builder.withDetail(snapshot.groupId() + ".stale", snapshot.stale());
-            if (!snapshot.running() || snapshot.stale()) {
+            details.withDetail(snapshot.groupId() + ".leader", snapshot.leaderId());
+            details.withDetail(snapshot.groupId() + ".appliedIndex", snapshot.lastAppliedIndex());
+            details.withDetail(snapshot.groupId() + ".snapshotIndex", snapshot.lastSnapshotIndex());
+            details.withDetail(snapshot.groupId() + ".stale", snapshot.stale());
+            details.withDetail(snapshot.groupId() + ".safeMode", snapshot.safeMode());
+            details.withDetail(snapshot.groupId() + ".safeModeReason", snapshot.safeModeReason());
+            if (!snapshot.running() || snapshot.stale() || snapshot.safeMode()) {
                 allRunning = false;
             }
         }
-        return allRunning ? builder.build() : Health.down().withDetails(builder.build().getDetails()).build();
+        Health.Builder state = allRunning ? Health.up() : Health.outOfService();
+        return state.withDetails(details.build().getDetails()).build();
     }
 }

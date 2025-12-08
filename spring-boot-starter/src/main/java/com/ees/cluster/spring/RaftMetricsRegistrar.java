@@ -29,6 +29,7 @@ public class RaftMetricsRegistrar implements MeterBinder {
             registry.gauge("ees.cluster.raft.snapshot.index", tags, metrics, RaftStateMachineMetrics::lastSnapshotIndex);
             registry.gauge("ees.cluster.raft.snapshot.count", tags, metrics, RaftStateMachineMetrics::snapshotsTaken);
             registry.gauge("ees.cluster.raft.running", tags, metrics, m -> m.running() ? 1 : 0);
+            registry.gauge("ees.cluster.raft.safe_mode", tags, metrics, m -> m.safeMode() ? 1 : 0);
         }
     }
 }

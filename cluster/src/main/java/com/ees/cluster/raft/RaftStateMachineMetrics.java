@@ -25,6 +25,8 @@ public class RaftStateMachineMetrics {
     private final AtomicReference<Instant> lastSnapshotAt = new AtomicReference<>();
     private final AtomicReference<Instant> startedAt = new AtomicReference<>();
     private final AtomicReference<Instant> stoppedAt = new AtomicReference<>();
+    private final AtomicBoolean safeMode = new AtomicBoolean(false);
+    private final AtomicReference<String> safeModeReason = new AtomicReference<>("");
 
     public void setGroupId(String groupId) {
         this.groupId.set(Objects.requireNonNull(groupId, "groupId must not be null"));
@@ -75,6 +77,19 @@ public class RaftStateMachineMetrics {
         return running.get();
     }
 
+    public void setSafeMode(boolean enabled, String reason) {
+        safeMode.set(enabled);
+        safeModeReason.set(reason == null ? "" : reason);
+    }
+
+    public boolean safeMode() {
+        return safeMode.get();
+    }
+
+    public String safeModeReason() {
+        return safeModeReason.get();
+    }
+
     public RaftHealthSnapshot health(Clock clock) {
         return health(clock, DEFAULT_STALENESS);
     }
@@ -95,7 +110,9 @@ public class RaftStateMachineMetrics {
                 lastSnapshotIndex.get(),
                 lastApplied,
                 lastSnapshot,
-                stale
+                stale,
+                safeMode.get(),
+                safeModeReason.get()
         );
     }
 }
