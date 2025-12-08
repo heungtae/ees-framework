@@ -129,7 +129,7 @@
 ## 남은 과제 체크리스트
 - [x] MCP 클라이언트/ToolCallback를 실제 MCP transport와 연결하고 오류 매핑·인증·재시도 적용
 - [x] AiAgentService 모델 호출 시 toolsAllowed/프롬프트 가드 적용 및 Spring AI ToolCallback 연동 강화
-- [ ] 레이트 리밋, 메트릭, 감사 로그 등의 관측·보안 훅 구현
-- [ ] REST/SSE API 및 Chat UI에 파라미터 검증·오류/승인 프롬프트·MCP 리소스 브라우저 추가
+- [x] 레이트 리밋, 메트릭, 감사 로그 등의 관측·보안 훅 구현
+- [x] REST/SSE API 및 Chat UI에 파라미터 검증·오류/승인 프롬프트·MCP 리소스 브라우저 추가
 - [x] 워크플로 DSL 샘플 그래프/테스트에 AiAgentStep 통합 및 에러/재시도/툴 화이트리스트 처리
 - [x] 히스토리 저장소 플러그인(metadata-store/Redis 등) 추가

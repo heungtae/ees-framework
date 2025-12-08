@@ -86,7 +86,7 @@ class DefaultAiAgentServiceTest {
 
         AiRequest request = new AiRequest("sess-3", "user-3", List.of(new AiMessage("user", "hi")), List.of("deleteAll"), false);
 
-        Assertions.assertThatThrownBy(() -> service.chat(request))
+        Assertions.assertThatThrownBy(() -> service.chat(request).block())
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessageContaining("Unknown tools");
     }

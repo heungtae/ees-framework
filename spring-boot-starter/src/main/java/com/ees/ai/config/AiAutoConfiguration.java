@@ -1,11 +1,13 @@
 package com.ees.ai.config;
 
 import com.ees.ai.core.AiAgentService;
+import com.ees.ai.core.AiRateLimiter;
 import com.ees.ai.core.AiSessionService;
 import com.ees.ai.core.AiToolRegistry;
 import com.ees.ai.core.DefaultAiAgentService;
 import com.ees.ai.core.DefaultAiToolRegistry;
 import com.ees.ai.core.InMemoryAiSessionService;
+import com.ees.ai.core.InMemoryAiRateLimiter;
 import com.ees.ai.core.MetadataStoreAiSessionService;
 import com.ees.ai.support.NoOpChatModel;
 import com.ees.ai.mcp.DefaultMcpClient;
@@ -29,6 +31,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.client.reactive.ReactorClientHttpConnector;
 import org.springframework.web.reactive.function.client.WebClient;
+import io.micrometer.core.instrument.MeterRegistry;
 import reactor.netty.http.client.HttpClient;
 
 @Configuration
@@ -70,8 +73,16 @@ public class AiAutoConfiguration {
                                          AiSessionService aiSessionService,
                                          AiToolRegistry aiToolRegistry,
                                          AiAgentProperties aiAgentProperties,
-                                         List<ToolCallback> toolCallbacks) {
-        return new DefaultAiAgentService(chatModel, streamingChatModel, aiSessionService, aiToolRegistry, aiAgentProperties, toolCallbacks);
+                                         List<ToolCallback> toolCallbacks,
+                                         AiRateLimiter aiRateLimiter,
+                                         MeterRegistry meterRegistry) {
+        return new DefaultAiAgentService(chatModel, streamingChatModel, aiSessionService, aiToolRegistry, aiAgentProperties, toolCallbacks, aiRateLimiter, meterRegistry);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
+    public AiRateLimiter aiRateLimiter(AiAgentProperties properties) {
+        return new InMemoryAiRateLimiter(properties);
     }
 
     @Bean

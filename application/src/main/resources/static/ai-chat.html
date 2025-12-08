@@ -5,7 +5,7 @@
     <title>AI Chat Console (Stub)</title>
     <style>
         body { font-family: Arial, sans-serif; background: #0f172a; color: #e2e8f0; margin: 0; padding: 24px; }
-        .panel { max-width: 720px; margin: 0 auto; background: #111827; padding: 16px; border-radius: 12px; box-shadow: 0 12px 32px rgba(0,0,0,0.3); }
+        .panel { max-width: 900px; margin: 0 auto; background: #111827; padding: 16px; border-radius: 12px; box-shadow: 0 12px 32px rgba(0,0,0,0.3); }
         h1 { margin-top: 0; }
         .messages { background: #0b1224; border-radius: 8px; padding: 12px; height: 320px; overflow-y: auto; }
         .msg { padding: 8px; margin-bottom: 6px; border-radius: 6px; }
@@ -31,11 +31,24 @@
             <input id="userId" value="demo-user"/>
         </div>
     </div>
+    <div class="row">
+        <div style="flex:1">
+            <label>Tools Allowed (comma separated)</label>
+            <input id="toolsAllowed" placeholder="listNodes, describeTopology"/>
+        </div>
+        <div style="flex:1; display:flex; align-items:flex-end; gap:8px;">
+            <input type="checkbox" id="approveDangerous"/> <label for="approveDangerous">Approve dangerous tools</label>
+        </div>
+    </div>
     <label>Prompt</label>
     <textarea id="prompt" rows="3" placeholder="Ask something..."></textarea>
     <div style="margin-top: 8px;">
         <button id="sendBtn" onclick="sendChat()">Send (Sync)</button>
         <button id="streamBtn" onclick="sendStream()">Send (Stream)</button>
+    </div>
+    <div style="margin-top: 12px;">
+        <button onclick="fetchNodes()">List Nodes</button>
+        <button onclick="fetchTopology()">Describe Topology</button>
     </div>
     <h3>Messages</h3>
     <div class="messages" id="messages"></div>
@@ -53,9 +66,10 @@
     async function sendChat() {
         disableButtons(true);
         const payload = buildPayload(false);
+        if (!payload) { disableButtons(false); return; }
         const res = await fetch('/api/ai/chat', {
             method: 'POST',
-            headers: {'Content-Type': 'application/json'},
+            headers: buildHeaders(),
             body: JSON.stringify(payload)
         });
         if (!res.ok) {
@@ -71,9 +85,10 @@
     async function sendStream() {
         disableButtons(true);
         const payload = buildPayload(true);
+        if (!payload) { disableButtons(false); return; }
         const res = await fetch('/api/ai/chat/stream', {
             method: 'POST',
-            headers: {'Content-Type': 'application/json'},
+            headers: buildHeaders(),
             body: JSON.stringify(payload)
         });
         if (!res.ok || !res.body) {
@@ -105,18 +120,46 @@
         disableButtons(false);
     }
 
+    async function fetchNodes() {
+        const res = await fetch('/api/ai/resources/nodes');
+        const text = await res.text();
+        addMessage('system', 'Nodes: ' + text);
+    }
+
+    async function fetchTopology() {
+        const res = await fetch('/api/ai/resources/topology');
+        const text = await res.text();
+        addMessage('system', 'Topology: ' + text);
+    }
+
     function buildPayload(streaming) {
         const sessionId = document.getElementById('sessionId').value;
         const userId = document.getElementById('userId').value;
         const content = document.getElementById('prompt').value;
+        if (!content.trim()) {
+            addMessage('system', 'Prompt is required');
+            return null;
+        }
         addMessage('user', content);
+        const tools = document.getElementById('toolsAllowed').value
+            .split(',')
+            .map(t => t.trim())
+            .filter(Boolean);
         return {
             sessionId,
             userId,
             messages: [{role: 'user', content}],
-            toolsAllowed: [],
+            toolsAllowed: tools,
             streaming
         };
+    }
+
+    function buildHeaders() {
+        const headers = {'Content-Type': 'application/json'};
+        if (document.getElementById('approveDangerous').checked) {
+            headers['X-AI-Approve'] = 'true';
+        }
+        return headers;
     }
 
     function disableButtons(disabled) {
