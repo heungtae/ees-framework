@@ -126,6 +126,12 @@ public class DefaultAiAgentService implements AiAgentService {
             return "";
         }
         Object output = response.getResult().getOutput();
+        if (output instanceof org.springframework.ai.chat.messages.AssistantMessage assistantMessage) {
+            return assistantMessage.getText();
+        }
+        if (output instanceof org.springframework.ai.chat.messages.AbstractMessage message) {
+            return message.getText();
+        }
         return output != null ? output.toString() : "";
     }
 
