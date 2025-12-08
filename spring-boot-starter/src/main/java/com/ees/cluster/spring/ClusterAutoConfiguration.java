@@ -4,7 +4,6 @@ import com.ees.cluster.assignment.AssignmentService;
 import com.ees.cluster.assignment.InMemoryAssignmentService;
 import com.ees.cluster.kafka.KafkaAssignmentCoordinator;
 import com.ees.cluster.kafka.KafkaLeaderElectionService;
-import com.ees.cluster.leader.CasLeaderElectionService;
 import com.ees.cluster.leader.LeaderElectionService;
 import com.ees.cluster.lock.DefaultDistributedLockService;
 import com.ees.cluster.lock.DistributedLockService;

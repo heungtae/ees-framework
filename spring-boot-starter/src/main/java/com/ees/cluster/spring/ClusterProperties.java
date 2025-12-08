@@ -2,6 +2,7 @@ package com.ees.cluster.spring;
 
 import com.ees.cluster.model.ClusterMode;
 import com.ees.cluster.model.ClusterRole;
+import com.ees.cluster.raft.RaftServerConfig;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 import java.time.Duration;
@@ -31,6 +32,7 @@ public class ClusterProperties {
     private Duration assignmentTtl = Duration.ofMinutes(5);
     private String leaderGroup = "cluster";
     private boolean heartbeatEnabled = true;
+    private RaftServerConfig raft = new RaftServerConfig();
 
     public ClusterMode getMode() {
         return mode;
@@ -134,5 +136,13 @@ public class ClusterProperties {
 
     public void setHeartbeatEnabled(boolean heartbeatEnabled) {
         this.heartbeatEnabled = heartbeatEnabled;
+    }
+
+    public RaftServerConfig getRaft() {
+        return raft;
+    }
+
+    public void setRaft(RaftServerConfig raft) {
+        this.raft = raft;
     }
 }
