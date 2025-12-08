@@ -1,0 +1,71 @@
+# Application-level configuration for the sample app.
+# Adjust values per environment; all secrets/tokens are placeholders.
+
+server:
+  port: 8080  # HTTP port for the sample web/API server
+
+spring:
+  application:
+    name: ees-sample-app
+  main:
+    web-application-type: reactive  # Use WebFlux
+
+logging:
+  level:
+    root: INFO
+    com.ees: DEBUG  # Narrow debug to framework packages when troubleshooting
+
+ees:
+  # Cluster settings (Kafka or Raft). Enable only one mode at a time.
+  cluster:
+    mode: kafka  # kafka | raft
+    node-id: node-1
+    # Kafka mode
+    kafka:
+      bootstrap-servers: localhost:9092
+      consumer-group: ees-cluster
+    # Raft mode
+    raft:
+      peer-count: 3  # 3 (default) or 5
+      data-dir: /tmp/ees/raft
+      groups:
+        app-default:
+          peers:
+            - node-1@localhost:9878
+            - node-2@localhost:9879
+            - node-3@localhost:9880
+      heartbeat-ms: 1000
+      rpc-timeout-ms: 3000
+      snapshot:
+        threshold: 5000
+        store: file  # file | db | kafka-ktable
+
+  # Workflow / AI settings
+  ai:
+    model: gpt-4o-mini
+    streaming-enabled: true
+    tools-allowed: []  # e.g. [listNodes, describeTopology]
+    history-store: in-memory  # in-memory | metadata-store
+    history-ttl-seconds: 86400
+    rate-limit:
+      requests-per-minute: 60
+      tokens-per-minute: 0
+
+  mcp:
+    base-url: http://localhost:8081  # MCP endpoint (optional)
+    timeout-millis: 5000
+    auth-token: ""  # Set if MCP requires auth
+
+  # Sample feature toggles (mirror of application.properties flags).
+  sample:
+    kafka:
+      enabled: false
+    ratis:
+      enabled: false
+
+# Spring AI/OpenAI configuration (placeholders; do not commit real keys).
+spring:
+  ai:
+    openai:
+      api-key: ${OPENAI_API_KEY:}  # Set via env var
+      base-url: https://api.openai.com/v1
