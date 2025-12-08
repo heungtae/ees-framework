@@ -23,6 +23,7 @@
         <module>sink</module>
         <module>workflow</module>
         <module>spring-boot-starter</module>
+        <module>example</module>
         <module>application</module>
     </modules>
 
@@ -100,6 +101,11 @@
             <dependency>
                 <groupId>com.ees</groupId>
                 <artifactId>ees-spring-boot-starter</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.ees</groupId>
+                <artifactId>ees-example</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
