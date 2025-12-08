@@ -7,6 +7,9 @@ import com.ees.ai.core.DefaultAiAgentService;
 import com.ees.ai.core.DefaultAiToolRegistry;
 import com.ees.ai.core.InMemoryAiSessionService;
 import com.ees.ai.support.NoOpChatModel;
+import com.ees.ai.mcp.DefaultMcpClient;
+import com.ees.ai.mcp.McpClient;
+import com.ees.ai.mcp.McpToolBridge;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.model.StreamingChatModel;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
@@ -40,6 +43,18 @@ public class AiAutoConfiguration {
                                          AiToolRegistry aiToolRegistry,
                                          AiAgentProperties aiAgentProperties) {
         return new DefaultAiAgentService(chatModel, streamingChatModel, aiSessionService, aiToolRegistry, aiAgentProperties);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
+    public McpClient mcpClient() {
+        return new DefaultMcpClient();
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
+    public McpToolBridge mcpToolBridge(McpClient mcpClient, AiToolRegistry aiToolRegistry) {
+        return new McpToolBridge(mcpClient, aiToolRegistry);
     }
 
     @Bean

@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>AI Chat Console (Stub)</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #0f172a; color: #e2e8f0; margin: 0; padding: 24px; }
+        .panel { max-width: 720px; margin: 0 auto; background: #111827; padding: 16px; border-radius: 12px; box-shadow: 0 12px 32px rgba(0,0,0,0.3); }
+        h1 { margin-top: 0; }
+        .messages { background: #0b1224; border-radius: 8px; padding: 12px; height: 320px; overflow-y: auto; }
+        .msg { padding: 8px; margin-bottom: 6px; border-radius: 6px; }
+        .msg.user { background: #1d4ed8; }
+        .msg.assistant { background: #047857; }
+        label { display: block; margin: 8px 0 4px; }
+        input, textarea { width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #1f2937; background: #0b1224; color: #e2e8f0; }
+        button { margin-right: 8px; padding: 10px 14px; border: none; border-radius: 6px; background: #f59e0b; color: #0b1224; font-weight: bold; cursor: pointer; }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        .row { display: flex; gap: 12px; }
+    </style>
+</head>
+<body>
+<div class="panel">
+    <h1>AI Chat Console</h1>
+    <div class="row">
+        <div style="flex:1">
+            <label>Session ID</label>
+            <input id="sessionId" value="demo-session"/>
+        </div>
+        <div style="flex:1">
+            <label>User ID</label>
+            <input id="userId" value="demo-user"/>
+        </div>
+    </div>
+    <label>Prompt</label>
+    <textarea id="prompt" rows="3" placeholder="Ask something..."></textarea>
+    <div style="margin-top: 8px;">
+        <button id="sendBtn" onclick="sendChat()">Send (Sync)</button>
+        <button id="streamBtn" onclick="sendStream()">Send (Stream)</button>
+    </div>
+    <h3>Messages</h3>
+    <div class="messages" id="messages"></div>
+</div>
+<script>
+    function addMessage(role, content) {
+        const box = document.getElementById('messages');
+        const div = document.createElement('div');
+        div.className = `msg ${role}`;
+        div.textContent = `${role}: ${content}`;
+        box.appendChild(div);
+        box.scrollTop = box.scrollHeight;
+    }
+
+    async function sendChat() {
+        disableButtons(true);
+        const payload = buildPayload(false);
+        const res = await fetch('/api/ai/chat', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(payload)
+        });
+        if (!res.ok) {
+            addMessage('system', 'Request failed: ' + res.statusText);
+            disableButtons(false);
+            return;
+        }
+        const data = await res.json();
+        addMessage('assistant', data.content);
+        disableButtons(false);
+    }
+
+    async function sendStream() {
+        disableButtons(true);
+        const payload = buildPayload(true);
+        const res = await fetch('/api/ai/chat/stream', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(payload)
+        });
+        if (!res.ok || !res.body) {
+            addMessage('system', 'Streaming failed: ' + res.statusText);
+            disableButtons(false);
+            return;
+        }
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        while (true) {
+            const {value, done} = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, {stream: true});
+            const lines = buffer.split('\\n\\n');
+            buffer = lines.pop();
+            for (const chunk of lines) {
+                const dataLine = chunk.split('\\n').find(line => line.startsWith('data:'));
+                if (dataLine) {
+                    try {
+                        const event = JSON.parse(dataLine.replace('data:', '').trim());
+                        addMessage('assistant', event.content);
+                    } catch (e) {
+                        addMessage('system', 'Malformed SSE chunk');
+                    }
+                }
+            }
+        }
+        disableButtons(false);
+    }
+
+    function buildPayload(streaming) {
+        const sessionId = document.getElementById('sessionId').value;
+        const userId = document.getElementById('userId').value;
+        const content = document.getElementById('prompt').value;
+        addMessage('user', content);
+        return {
+            sessionId,
+            userId,
+            messages: [{role: 'user', content}],
+            toolsAllowed: [],
+            streaming
+        };
+    }
+
+    function disableButtons(disabled) {
+        document.getElementById('sendBtn').disabled = disabled;
+        document.getElementById('streamBtn').disabled = disabled;
+    }
+</script>
+</body>
+</html>
