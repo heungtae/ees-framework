@@ -6,6 +6,7 @@ import com.ees.ai.core.AiToolRegistry;
 import com.ees.ai.core.DefaultAiAgentService;
 import com.ees.ai.core.DefaultAiToolRegistry;
 import com.ees.ai.core.InMemoryAiSessionService;
+import com.ees.ai.core.MetadataStoreAiSessionService;
 import com.ees.ai.support.NoOpChatModel;
 import com.ees.ai.mcp.DefaultMcpClient;
 import com.ees.ai.mcp.McpClient;
@@ -14,6 +15,8 @@ import com.ees.ai.mcp.McpToolBridge;
 import com.ees.ai.mcp.LoggingMcpAuditService;
 import com.ees.ai.mcp.McpAuditService;
 import com.ees.ai.mcp.RestMcpClient;
+import com.ees.metadatastore.InMemoryMetadataStore;
+import com.ees.metadatastore.MetadataStore;
 import java.util.List;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.model.StreamingChatModel;
@@ -40,7 +43,22 @@ public class AiAutoConfiguration {
     }
 
     @Bean
-    @ConditionalOnMissingBean
+    @ConditionalOnMissingBean(MetadataStore.class)
+    @ConditionalOnProperty(prefix = "ees.ai", name = "history-store", havingValue = "metadata-store")
+    public MetadataStore metadataStore() {
+        return new InMemoryMetadataStore();
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(AiSessionService.class)
+    @ConditionalOnProperty(prefix = "ees.ai", name = "history-store", havingValue = "metadata-store")
+    public AiSessionService metadataStoreAiSessionService(MetadataStore metadataStore,
+                                                          AiAgentProperties properties) {
+        return new MetadataStoreAiSessionService(metadataStore, java.time.Duration.ofSeconds(properties.getHistoryTtlSeconds()));
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(AiSessionService.class)
     public AiSessionService aiSessionService() {
         return new InMemoryAiSessionService();
     }

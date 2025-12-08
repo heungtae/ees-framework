@@ -16,6 +16,8 @@ public class AiAgentProperties {
 
     private String historyStore = "in-memory";
 
+    private long historyTtlSeconds = 86400;
+
     private RateLimit rateLimit = new RateLimit();
 
     public String getModel() {
@@ -48,6 +50,14 @@ public class AiAgentProperties {
 
     public void setHistoryStore(String historyStore) {
         this.historyStore = historyStore;
+    }
+
+    public long getHistoryTtlSeconds() {
+        return historyTtlSeconds;
+    }
+
+    public void setHistoryTtlSeconds(long historyTtlSeconds) {
+        this.historyTtlSeconds = historyTtlSeconds;
     }
 
     public RateLimit getRateLimit() {
