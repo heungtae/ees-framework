@@ -74,6 +74,14 @@
 - [x] 메트릭·헬스 노출과 서버 시작/종료 훅 정리.
 - [x] 리더 전용 처리 규칙과 리밸런스 세이프 모드 가드 추가.
 - [x] StateMachine 단위 테스트와 3노드 임베디드 Ratis 통합 테스트 구성.
+- [x] 스냅샷/로그 크기 기반 자동 스냅샷 트리거 튜닝 및 운영 설정 검증.
+- [x] 리더/팔로워 상태 변경 이벤트·메트릭 강화.
+- [x] 네트워크 허용 환경에서 실 Ratis 통합 테스트 재검증 및 가이드 추가.
+
+### 운영 가이드
+- 전체 Ratis 통합 테스트: 네트워크 허용 환경에서 `mvn -pl cluster -Dtest=EmbeddedRatisClusterTest#replicatesAssignmentsAndLocksAcrossPeers test` 실행. 로컬 소켓 불가 환경에서는 자동 스킵됨.
+- 스냅샷 트리거: `RaftServerConfig.snapshotThreshold`(엔트리 수)와 `snapshotSizeThresholdBytes`(로그 데이터 크기)를 조정해 운영 환경에 맞게 튜닝.
+- 리더 상태/세이프모드: `LeaderProcessingGuard` 로그 및 Micrometer 지표(`ees.cluster.raft.running`, `safe_mode`)로 확인.
 
 ## 오픈 질문
 - 명령 직렬화 포맷을 JSON으로 시작할지 protobuf를 바로 도입할지?

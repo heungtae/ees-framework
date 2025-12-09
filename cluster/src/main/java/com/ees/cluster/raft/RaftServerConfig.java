@@ -12,6 +12,7 @@ public class RaftServerConfig {
     private Duration heartbeatInterval = Duration.ofMillis(500);
     private Duration rpcTimeout = Duration.ofSeconds(5);
     private long snapshotThreshold = 1_000L;
+    private long snapshotSizeThresholdBytes = 64 * 1024 * 1024;
     private SnapshotStore snapshotStore = SnapshotStore.FILE;
     private Map<String, RaftGroupConfig> groups = new HashMap<>();
 
@@ -65,6 +66,17 @@ public class RaftServerConfig {
             throw new IllegalArgumentException("snapshotThreshold must be >= 0");
         }
         this.snapshotThreshold = snapshotThreshold;
+    }
+
+    public long getSnapshotSizeThresholdBytes() {
+        return snapshotSizeThresholdBytes;
+    }
+
+    public void setSnapshotSizeThresholdBytes(long snapshotSizeThresholdBytes) {
+        if (snapshotSizeThresholdBytes < 0) {
+            throw new IllegalArgumentException("snapshotSizeThresholdBytes must be >= 0");
+        }
+        this.snapshotSizeThresholdBytes = snapshotSizeThresholdBytes;
     }
 
     public SnapshotStore getSnapshotStore() {

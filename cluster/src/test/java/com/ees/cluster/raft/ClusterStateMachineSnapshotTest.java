@@ -70,14 +70,15 @@ class ClusterStateMachineSnapshotTest {
     @Test
     void leaderGuardRespectsSafeModeAndLeadership() {
         RebalanceSafeModeGuard safeMode = new RebalanceSafeModeGuard();
+        RaftStateMachineMetrics metrics = new RaftStateMachineMetrics();
         LeaderProcessingGuard guard = new LeaderProcessingGuard(new StubLeaderService("group-1", "node-1"),
-                "group-1", "node-1", safeMode);
+                "group-1", "node-1", safeMode, metrics);
 
         ProcessingDecision allowed = guard.allowProcessing().block();
         assertTrue(allowed.allowed());
 
         LeaderProcessingGuard followerGuard = new LeaderProcessingGuard(new StubLeaderService("group-1", "node-1"),
-                "group-1", "node-2", safeMode);
+                "group-1", "node-2", safeMode, metrics);
         ProcessingDecision deniedFollower = followerGuard.allowProcessing().block();
         assertFalse(deniedFollower.allowed());
 
@@ -95,7 +96,7 @@ class ClusterStateMachineSnapshotTest {
                                 ClusterSnapshotStore store,
                                 String groupId,
                                 Clock clock) {
-            super(assignments, locks, store, clock, 10L, new RaftStateMachineMetrics(), new RebalanceSafeModeGuard());
+            super(assignments, locks, store, clock, 10L, 0L, new RaftStateMachineMetrics(), new RebalanceSafeModeGuard());
             this.groupId = groupId;
             metrics().setGroupId(groupId);
         }

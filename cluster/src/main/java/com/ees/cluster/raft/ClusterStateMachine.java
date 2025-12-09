@@ -54,6 +54,8 @@ public class ClusterStateMachine extends BaseStateMachine {
     private final AtomicLong appliedSinceSnapshot = new AtomicLong();
     private final RaftStateMachineMetrics metrics;
     private final RebalanceSafeModeGuard safeModeGuard;
+    private final long snapshotSizeThresholdBytes;
+    private final AtomicLong appliedBytesSinceSnapshot = new AtomicLong();
 
     public ClusterStateMachine(RaftAssignmentService assignmentService, DistributedLockService lockService) {
         this(assignmentService, lockService, new FileClusterSnapshotStore(java.nio.file.Path.of("data/raft/snapshots")));
@@ -70,7 +72,7 @@ public class ClusterStateMachine extends BaseStateMachine {
                                ClusterSnapshotStore snapshotStore,
                                Clock clock,
                                long snapshotThreshold) {
-        this(assignmentService, lockService, snapshotStore, clock, snapshotThreshold, new RaftStateMachineMetrics(), new RebalanceSafeModeGuard());
+        this(assignmentService, lockService, snapshotStore, clock, snapshotThreshold, 0L, new RaftStateMachineMetrics(), new RebalanceSafeModeGuard());
     }
 
     public ClusterStateMachine(RaftAssignmentService assignmentService,
@@ -78,6 +80,7 @@ public class ClusterStateMachine extends BaseStateMachine {
                                ClusterSnapshotStore snapshotStore,
                                Clock clock,
                                long snapshotThreshold,
+                               long snapshotSizeThresholdBytes,
                                RaftStateMachineMetrics metrics,
                                RebalanceSafeModeGuard safeModeGuard) {
         this.assignmentService = Objects.requireNonNull(assignmentService, "assignmentService must not be null");
@@ -85,6 +88,7 @@ public class ClusterStateMachine extends BaseStateMachine {
         this.snapshotStore = Objects.requireNonNull(snapshotStore, "snapshotStore must not be null");
         this.clock = Objects.requireNonNull(clock, "clock must not be null");
         this.snapshotThreshold = snapshotThreshold;
+        this.snapshotSizeThresholdBytes = snapshotSizeThresholdBytes;
         this.metrics = Objects.requireNonNull(metrics, "metrics must not be null");
         this.safeModeGuard = Objects.requireNonNull(safeModeGuard, "safeModeGuard must not be null");
     }
@@ -94,7 +98,9 @@ public class ClusterStateMachine extends BaseStateMachine {
                                                 ClusterStateRepository repository,
                                                 RaftServerConfig config) {
         ClusterSnapshotStore store = ClusterSnapshotStores.forConfig(config, repository);
-        return new ClusterStateMachine(assignmentService, lockService, store, Clock.systemUTC(), config.getSnapshotThreshold(), new RaftStateMachineMetrics(), new RebalanceSafeModeGuard());
+        return new ClusterStateMachine(assignmentService, lockService, store, Clock.systemUTC(),
+                config.getSnapshotThreshold(), config.getSnapshotSizeThresholdBytes(),
+                new RaftStateMachineMetrics(), new RebalanceSafeModeGuard());
     }
 
     public RaftStateMachineMetrics metrics() {
@@ -123,6 +129,7 @@ public class ClusterStateMachine extends BaseStateMachine {
             updateLastAppliedTermIndex(trx.getLogEntry().getTerm(), trx.getLogEntry().getIndex());
             metrics.recordApply(trx.getLogEntry().getIndex(), clock.instant());
         }
+        appliedBytesSinceSnapshot.addAndGet(data.length);
         if (data.length == 0) {
             return CompletableFuture.completedFuture(Message.valueOf("empty"));
         }
@@ -156,6 +163,7 @@ public class ClusterStateMachine extends BaseStateMachine {
         snapshotStore.persist(snapshot);
         metrics.recordSnapshot(logIndex, snapshot.takenAt());
         appliedSinceSnapshot.set(0L);
+        appliedBytesSinceSnapshot.set(0L);
         log.info("Taking snapshot at term={}, index={} (takenAt={})", term, logIndex, snapshot.takenAt());
         return logIndex;
     }
@@ -214,11 +222,9 @@ public class ClusterStateMachine extends BaseStateMachine {
     }
 
     private void maybeTriggerSnapshot() {
-        if (snapshotThreshold <= 0) {
-            return;
-        }
-        long applied = appliedSinceSnapshot.incrementAndGet();
-        if (applied < snapshotThreshold) {
+        boolean countMet = snapshotThreshold > 0 && appliedSinceSnapshot.incrementAndGet() >= snapshotThreshold;
+        boolean sizeMet = snapshotSizeThresholdBytes > 0 && appliedBytesSinceSnapshot.get() >= snapshotSizeThresholdBytes;
+        if (!countMet && !sizeMet) {
             return;
         }
         try {
@@ -255,6 +261,7 @@ public class ClusterStateMachine extends BaseStateMachine {
             updateLastAppliedTermIndex(snapshot.term(), snapshot.index());
         }
         appliedSinceSnapshot.set(0L);
+        appliedBytesSinceSnapshot.set(0L);
         log.info("Restored snapshot for group {} at term={}, index={}, takenAt={}", snapshot.groupId(),
                 snapshot.term(), snapshot.index(), snapshot.takenAt());
     }
@@ -276,7 +283,7 @@ public class ClusterStateMachine extends BaseStateMachine {
     }
 
     public LeaderProcessingGuard leaderProcessingGuard(LeaderElectionService leaderElectionService, String nodeId) {
-        return new LeaderProcessingGuard(leaderElectionService, groupIdAsString(), nodeId, safeModeGuard);
+        return new LeaderProcessingGuard(leaderElectionService, groupIdAsString(), nodeId, safeModeGuard, metrics);
     }
 
     protected String groupIdAsString() {
