@@ -41,3 +41,11 @@
 ## 클러스터/스냅샷 연계
 - Raft 스냅샷이 `MetadataStore`를 snapshot 저장소로 사용할 수 있도록 key prefix(`cluster:raft/snapshots/{group}`) 표준화.
 - backend가 file/db/kafka-ktable로 설정되면 스냅샷도 동일 backend에 저장/복원.
+
+## 진행 현황 / 다음 액션
+- [x] InMemory 구현을 blocking API로 정리하고 기본 TCK 테스트를 동기식으로 전환.
+- [ ] `MetadataStoreFactory`/공통 직렬화·TTL 유틸을 추가해 backend 선택 진입점 마련.
+- [ ] `FileMetadataStore` 구현 + 만료 스캐너/이벤트 발행.
+- [ ] JDBC 기반 `DbMetadataStore` 구현 + 만료 정리 태스크.
+- [ ] Kafka KTable backend 구현 + watch/scan 패턴 정리.
+- [ ] 공통 TCK 테스트를 backend별로 재사용하고 Raft 스냅샷 키 표준 반영.

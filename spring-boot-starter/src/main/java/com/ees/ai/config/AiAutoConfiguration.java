@@ -29,10 +29,9 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.client.reactive.ReactorClientHttpConnector;
-import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
+import org.springframework.web.client.RestClient;
 import io.micrometer.core.instrument.MeterRegistry;
-import reactor.netty.http.client.HttpClient;
 
 @Configuration
 @ConditionalOnClass(ChatModel.class)
@@ -87,6 +86,7 @@ public class AiAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
+    @ConditionalOnProperty(prefix = "ees.mcp", name = "base-url", havingValue = "", matchIfMissing = true)
     public McpClient mcpClient() {
         return new DefaultMcpClient();
     }
@@ -100,12 +100,14 @@ public class AiAutoConfiguration {
     @Bean(name = "mcpWebClient")
     @ConditionalOnMissingBean(name = "mcpWebClient")
     @ConditionalOnProperty(prefix = "ees.mcp", name = "base-url")
-    public WebClient mcpWebClient(McpProperties properties) {
-        HttpClient httpClient = HttpClient.create()
-            .responseTimeout(java.time.Duration.ofMillis(properties.getTimeoutMillis()));
-        WebClient.Builder builder = WebClient.builder()
+    public RestClient mcpWebClient(McpProperties properties) {
+        SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
+        requestFactory.setConnectTimeout((int) properties.getTimeoutMillis());
+        requestFactory.setReadTimeout((int) properties.getTimeoutMillis());
+
+        RestClient.Builder builder = RestClient.builder()
             .baseUrl(properties.getBaseUrl())
-            .clientConnector(new ReactorClientHttpConnector(httpClient));
+            .requestFactory(requestFactory);
         if (properties.getAuthToken() != null && !properties.getAuthToken().isBlank()) {
             builder.defaultHeader("Authorization", "Bearer " + properties.getAuthToken());
         }
@@ -115,7 +117,8 @@ public class AiAutoConfiguration {
     @Bean
     @ConditionalOnMissingBean(name = "restMcpClient")
     @ConditionalOnProperty(prefix = "ees.mcp", name = "base-url")
-    public McpClient restMcpClient(WebClient mcpWebClient) {
+    @org.springframework.context.annotation.Primary
+    public McpClient restMcpClient(RestClient mcpWebClient) {
         return new RestMcpClient(mcpWebClient);
     }
 

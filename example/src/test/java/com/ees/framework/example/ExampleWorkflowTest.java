@@ -12,7 +12,7 @@ import com.ees.framework.registry.DefaultSinkRegistry;
 import com.ees.framework.registry.DefaultSourceHandlerRegistry;
 import com.ees.framework.registry.DefaultSourceRegistry;
 import com.ees.framework.workflow.DefaultWorkflowNodeResolver;
-import com.ees.framework.workflow.engine.ReactorWorkflowEngine;
+import com.ees.framework.workflow.engine.BlockingWorkflowEngine;
 import com.ees.framework.workflow.engine.WorkflowRuntime;
 import com.ees.framework.workflow.dsl.WorkflowDsl;
 import com.ees.framework.workflow.model.WorkflowDefinition;
@@ -47,7 +47,7 @@ class ExampleWorkflowTest {
             List.of(),
             new LinearToGraphConverter(),
             new WorkflowGraphValidator(),
-            new ReactorWorkflowEngine(),
+            new BlockingWorkflowEngine(),
             new DefaultWorkflowNodeResolver(
                 new DefaultSourceRegistry(List.of(source)),
                 new DefaultSourceHandlerRegistry(List.of(sourceHandler)),
@@ -57,7 +57,7 @@ class ExampleWorkflowTest {
             )
         );
 
-        runtime.startAll().block();
+        runtime.startAll();
 
         assertThat(sink.getReceived()).hasSize(2);
         assertThat(sink.getReceived())
@@ -68,6 +68,6 @@ class ExampleWorkflowTest {
         assertThat(sink.getReceived().get(0).meta().attributes())
             .containsKeys("auditedBy", "auditedAt");
 
-        runtime.stopAll().block();
+        runtime.stopAll();
     }
 }

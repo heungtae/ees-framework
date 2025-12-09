@@ -4,12 +4,6 @@
 server:
   port: 8080  # HTTP port for the sample web/API server
 
-spring:
-  application:
-    name: ees-sample-app
-  main:
-    web-application-type: reactive  # Use WebFlux
-
 logging:
   level:
     root: INFO
@@ -65,6 +59,13 @@ ees:
 
 # Spring AI/OpenAI configuration (placeholders; do not commit real keys).
 spring:
+  application:
+    name: ees-sample-app
+  main:
+    web-application-type: servlet  # Use Spring MVC
+  threads:
+    virtual:
+      enabled: true
   ai:
     openai:
       api-key: ${OPENAI_API_KEY:}  # Set via env var
