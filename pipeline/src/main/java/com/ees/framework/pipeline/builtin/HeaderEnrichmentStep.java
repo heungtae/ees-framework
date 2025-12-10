@@ -5,8 +5,6 @@ import com.ees.framework.context.FxContext;
 import com.ees.framework.context.FxHeaders;
 import com.ees.framework.pipeline.PipelineStep;
 import org.springframework.stereotype.Component;
-import reactor.core.publisher.Mono;
-
 import java.time.Instant;
 
 /**
@@ -17,10 +15,10 @@ import java.time.Instant;
 public class HeaderEnrichmentStep implements PipelineStep<Object, Object> {
 
     @Override
-    public Mono<FxContext<Object>> apply(FxContext<Object> context) {
+    public FxContext<Object> apply(FxContext<Object> context) {
         FxHeaders headers = context.headers()
             .with("processed-by", getClass().getSimpleName())
             .with("processed-at", Instant.now().toString());
-        return Mono.just(context.withHeaders(headers));
+        return context.withHeaders(headers);
     }
 }

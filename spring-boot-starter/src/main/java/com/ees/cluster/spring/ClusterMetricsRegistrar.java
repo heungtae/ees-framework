@@ -15,6 +15,6 @@ public class ClusterMetricsRegistrar implements MeterBinder {
     @Override
     public void bindTo(MeterRegistry meterRegistry) {
         meterRegistry.gauge("ees.cluster.members", membershipService,
-                svc -> svc.view().map(view -> view.size()).blockOptional().orElse(0));
+                svc -> svc.view().size());
     }
 }

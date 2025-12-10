@@ -7,11 +7,11 @@ import com.ees.cluster.model.KeyAssignmentSource;
 import com.ees.cluster.model.LockRecord;
 import com.ees.cluster.raft.snapshot.ClusterSnapshotStore;
 import com.ees.cluster.raft.snapshot.FileClusterSnapshotStore;
+import com.ees.cluster.raft.snapshot.ClusterSnapshot;
 import com.ees.cluster.state.ClusterStateRepository;
 import com.ees.cluster.state.InMemoryClusterStateRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
-import reactor.core.publisher.Mono;
 
 import java.nio.file.Path;
 import java.time.Clock;
@@ -22,6 +22,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
+import static com.ees.cluster.assignment.AssignmentService.DEFAULT_AFFINITY_KIND;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -44,11 +45,12 @@ class ClusterStateMachineSnapshotTest {
 
         assignments.applyAssignments(groupId, List.of(
                 new Assignment(groupId, 0, "node-1", List.of("eq-1"), null, 1L, clock.instant()))
-        ).block();
-        assignments.assignKey(groupId, 0, "key-1", "app-1", KeyAssignmentSource.MANUAL).block();
-        locks.tryAcquire("lock-1", "node-1", Duration.ofSeconds(30), Map.of("meta", "v")).block();
+        );
+        assignments.assignKey(groupId, 0, DEFAULT_AFFINITY_KIND, "key-1", "app-1", KeyAssignmentSource.MANUAL);
+        locks.tryAcquire("lock-1", "node-1", Duration.ofSeconds(30), Map.of("meta", "v"));
 
         machine.takeSnapshot();
+        ClusterSnapshot snapshot = store.loadLatest(groupId).orElseThrow();
 
         ClusterStateRepository restoredRepo = new InMemoryClusterStateRepository(clock);
         RaftAssignmentService restoredAssignments = new RaftAssignmentService(restoredRepo, Duration.ofMinutes(5), clock);
@@ -56,15 +58,23 @@ class ClusterStateMachineSnapshotTest {
         ClusterStateMachine reloaded = new StaticGroupStateMachine(restoredAssignments, restoredLocks, store, groupId, clock);
         reloaded.loadSnapshot();
 
-        Optional<Assignment> assignment = restoredAssignments.findAssignment(groupId, 0).block();
+        Optional<Assignment> assignment = restoredAssignments.findAssignment(groupId, 0);
         assertTrue(assignment.isPresent());
         assertEquals("node-1", assignment.get().ownerNodeId());
 
-        Optional<LockRecord> lock = restoredLocks.getLock("lock-1").block();
+        Optional<LockRecord> lock = restoredLocks.getLock("lock-1");
         assertTrue(lock.isPresent());
         assertEquals("node-1", lock.get().ownerNodeId());
 
-        assertTrue(restoredAssignments.getKeyAssignment(groupId, 0, "key-1").block().isPresent());
+        Map<Integer, Map<String, Map<String, com.ees.cluster.model.KeyAssignment>>> restoredKeys =
+                restoredAssignments.snapshotKeyAssignments(groupId);
+        assertTrue(restoredKeys.getOrDefault(0, Map.of()).containsKey(DEFAULT_AFFINITY_KIND),
+                () -> "restored key assignments: " + restoredKeys);
+
+        Optional<com.ees.cluster.model.KeyAssignment> keyAssignment =
+                restoredAssignments.getKeyAssignment(groupId, 0, DEFAULT_AFFINITY_KIND, "key-1");
+        assertTrue(keyAssignment.isPresent());
+        assertEquals(DEFAULT_AFFINITY_KIND, keyAssignment.get().kind());
     }
 
     @Test
@@ -74,16 +84,16 @@ class ClusterStateMachineSnapshotTest {
         LeaderProcessingGuard guard = new LeaderProcessingGuard(new StubLeaderService("group-1", "node-1"),
                 "group-1", "node-1", safeMode, metrics);
 
-        ProcessingDecision allowed = guard.allowProcessing().block();
+        ProcessingDecision allowed = guard.allowProcessing();
         assertTrue(allowed.allowed());
 
         LeaderProcessingGuard followerGuard = new LeaderProcessingGuard(new StubLeaderService("group-1", "node-1"),
                 "group-1", "node-2", safeMode, metrics);
-        ProcessingDecision deniedFollower = followerGuard.allowProcessing().block();
+        ProcessingDecision deniedFollower = followerGuard.allowProcessing();
         assertFalse(deniedFollower.allowed());
 
         safeMode.enterSafeMode("rebalance");
-        ProcessingDecision deniedSafeMode = guard.allowProcessing().block();
+        ProcessingDecision deniedSafeMode = guard.allowProcessing();
         assertFalse(deniedSafeMode.allowed());
         assertTrue(deniedSafeMode.reason().contains("safe-mode"));
     }
@@ -118,28 +128,27 @@ class ClusterStateMachineSnapshotTest {
         }
 
         @Override
-        public reactor.core.publisher.Mono<java.util.Optional<com.ees.cluster.model.LeaderInfo>> tryAcquireLeader(String groupId, String nodeId, com.ees.cluster.model.LeaderElectionMode mode, java.time.Duration leaseDuration) {
+        public java.util.Optional<com.ees.cluster.model.LeaderInfo> tryAcquireLeader(String groupId, String nodeId, com.ees.cluster.model.LeaderElectionMode mode, java.time.Duration leaseDuration) {
             return getLeader(groupId);
         }
 
         @Override
-        public reactor.core.publisher.Mono<java.lang.Boolean> release(String groupId, String nodeId) {
-            return Mono.just(false);
+        public boolean release(String groupId, String nodeId) {
+            return false;
         }
 
         @Override
-        public reactor.core.publisher.Mono<java.util.Optional<com.ees.cluster.model.LeaderInfo>> getLeader(String groupId) {
+        public java.util.Optional<com.ees.cluster.model.LeaderInfo> getLeader(String groupId) {
             if (!this.groupId.equals(groupId)) {
-                return Mono.just(java.util.Optional.empty());
+                return java.util.Optional.empty();
             }
             com.ees.cluster.model.LeaderInfo info = new com.ees.cluster.model.LeaderInfo(groupId, leaderId,
                     com.ees.cluster.model.LeaderElectionMode.RAFT, 1L, Instant.now(), Instant.now().plusSeconds(5));
-            return Mono.just(java.util.Optional.of(info));
+            return java.util.Optional.of(info);
         }
 
         @Override
-        public reactor.core.publisher.Flux<com.ees.cluster.model.LeaderInfo> watch(String groupId) {
-            return reactor.core.publisher.Flux.empty();
+        public void watch(String groupId, java.util.function.Consumer<com.ees.cluster.model.LeaderInfo> consumer) {
         }
     }
 }

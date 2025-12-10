@@ -1,5 +1,6 @@
 package com.ees.framework.autoconfigure;
 
+import com.ees.cluster.spring.ClusterProperties;
 import com.ees.framework.handlers.SinkHandler;
 import com.ees.framework.handlers.SourceHandler;
 import com.ees.framework.pipeline.PipelineStep;
@@ -16,9 +17,10 @@ import com.ees.framework.registry.SourceRegistry;
 import com.ees.framework.sink.Sink;
 import com.ees.framework.source.Source;
 import com.ees.framework.workflow.DefaultWorkflowNodeResolver;
-import com.ees.framework.workflow.engine.ReactorWorkflowEngine;
+import com.ees.framework.workflow.engine.BlockingWorkflowEngine;
 import com.ees.framework.workflow.engine.WorkflowRuntime;
 import com.ees.framework.workflow.engine.WorkflowNodeResolver;
+import com.ees.framework.workflow.affinity.DefaultAffinityKeyResolver;
 import com.ees.framework.workflow.model.WorkflowDefinition;
 import com.ees.framework.workflow.model.WorkflowGraphDefinition;
 import com.ees.framework.workflow.util.LinearToGraphConverter;
@@ -33,7 +35,7 @@ import java.util.List;
  * FX Framework Spring Boot AutoConfiguration.
  *
  * - 레지스트리 Bean 생성
- * - WorkflowGraphValidator / LinearToGraphConverter / ReactorWorkflowEngine Bean 생성
+ * - WorkflowGraphValidator / LinearToGraphConverter / BlockingWorkflowEngine Bean 생성
  * - WorkflowNodeResolver 기본 구현 생성
  * - WorkflowDefinition / WorkflowGraphDefinition 리스트는 추후 properties/DSL 로 확장
  */
@@ -84,8 +86,11 @@ public class FxFrameworkAutoConfiguration {
     }
 
     @Bean
-    public ReactorWorkflowEngine reactorWorkflowEngine() {
-        return new ReactorWorkflowEngine();
+    public BlockingWorkflowEngine reactorWorkflowEngine(ClusterProperties clusterProperties) {
+        return new BlockingWorkflowEngine(
+            BlockingWorkflowEngine.BatchingOptions.defaults(),
+            new DefaultAffinityKeyResolver(clusterProperties.getAssignmentAffinityKind())
+        );
     }
 
     @Bean
@@ -115,7 +120,7 @@ public class FxFrameworkAutoConfiguration {
         ObjectProvider<WorkflowGraphDefinition> workflowGraphDefinitions,
         LinearToGraphConverter converter,
         WorkflowGraphValidator validator,
-        ReactorWorkflowEngine engine,
+        BlockingWorkflowEngine engine,
         WorkflowNodeResolver resolver
     ) {
         return new WorkflowRuntime(

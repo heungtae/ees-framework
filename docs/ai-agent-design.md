@@ -40,7 +40,7 @@
 - `cancelWorkflow(executionId)`
 - `describeTopology()`
 - `listNodes()`
-- `assignKey(group, partition, key, appId)`
+- `assignKey(group, partition, kind, key, appId)`
 - `lock(name, ttl)`
 - `releaseLock(name)`
 - `getWorkflowState(executionId)`
@@ -77,7 +77,7 @@
 - 명령 카테고리 예시:
   - 워크플로: `startWorkflow(id, params)`, `pause/resume/cancel(executionId)`, `getWorkflowState(executionId)`, `listWorkflows()`.
   - 클러스터/노드: `listNodes()`, `describeTopology()`, `setClusterMode(mode)`, `drainNode(nodeId)`, `rebalanceAssignments()`.
-  - 할당: `assignKey(group, partition, key, appId)`, `unassignKey(key)`, `describeAssignments(group?)`.
+  - 할당: `assignKey(group, partition, kind, key, appId)`, `unassignKey(key)`, `describeAssignments(group?)`.
   - 락: `lock(name, ttl)`, `releaseLock(name)`, `listLocks()`.
   - 리더십: `forceReelection(mode?)`, `getLeaderInfo(mode?)`.
   - 모니터링: `tailEvents(type, since?)`, `getMetrics(scope?)`.

@@ -1,6 +1,7 @@
 package com.ees.cluster.spring;
 
 import com.ees.cluster.assignment.AssignmentService;
+import com.ees.cluster.assignment.ClusterAffinityKindMonitor;
 import com.ees.cluster.assignment.InMemoryAssignmentService;
 import com.ees.cluster.kafka.KafkaAssignmentCoordinator;
 import com.ees.cluster.kafka.KafkaLeaderElectionService;
@@ -21,6 +22,9 @@ import com.ees.cluster.state.ClusterStateRepository;
 import com.ees.cluster.state.MetadataStoreClusterStateRepository;
 import com.ees.metadatastore.InMemoryMetadataStore;
 import com.ees.metadatastore.MetadataStore;
+import com.ees.framework.workflow.affinity.AffinityKindChangeHandler;
+import com.ees.framework.workflow.engine.BlockingWorkflowEngine;
+import com.ees.framework.workflow.engine.WorkflowRuntime;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.boot.actuate.health.Health;
 import org.springframework.boot.actuate.health.HealthIndicator;
@@ -82,8 +86,25 @@ public class ClusterAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
+    public DefaultAffinityKeyExtractor<Object> defaultAffinityKeyExtractor(ClusterProperties properties) {
+        return new DefaultAffinityKeyExtractor<>(properties.getAssignmentAffinityKind(),
+                value -> value == null ? null : value.toString());
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
     public KafkaAssignmentCoordinator kafkaAssignmentCoordinator(AssignmentService assignmentService) {
         return new KafkaAssignmentCoordinator(assignmentService);
+    }
+
+    @Bean
+    @ConditionalOnBean({BlockingWorkflowEngine.class, WorkflowRuntime.class})
+    @ConditionalOnMissingBean
+    public ClusterAffinityKindMonitor clusterAffinityKindMonitor(AssignmentService assignmentService,
+                                                                 BlockingWorkflowEngine workflowEngine,
+                                                                 WorkflowRuntime workflowRuntime) {
+        AffinityKindChangeHandler handler = AffinityKindChangeHandler.forRuntime(workflowEngine, workflowRuntime);
+        return new ClusterAffinityKindMonitor(assignmentService, handler::onAffinityKindChanged);
     }
 
     @Bean
@@ -117,10 +138,9 @@ public class ClusterAutoConfiguration {
                                                   ClusterProperties properties) {
         return () -> {
             boolean leaderPresent = leaderElectionService.getLeader(properties.getLeaderGroup())
-                    .map(opt -> opt.map(info -> info.leaderNodeId().equals(properties.getNodeId())).orElse(false))
-                    .blockOptional()
-                    .orElse(false);
-            int members = membershipService.view().map(m -> m.size()).blockOptional().orElse(0);
+                .map(info -> info.leaderNodeId().equals(properties.getNodeId()))
+                .orElse(false);
+            int members = membershipService.view().size();
             Health.Builder builder = leaderPresent ? Health.up() : Health.unknown();
             builder.withDetail("members", members);
             builder.withDetail("mode", properties.getMode());

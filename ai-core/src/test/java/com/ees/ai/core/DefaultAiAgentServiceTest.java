@@ -11,11 +11,10 @@ import org.springframework.ai.chat.model.StreamingChatModel;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.tool.ToolCallback;
 import org.springframework.ai.tool.definition.DefaultToolDefinition;
-import reactor.core.publisher.Flux;
-import reactor.test.StepVerifier;
 
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
+import reactor.core.publisher.Flux;
 
 class DefaultAiAgentServiceTest {
 
@@ -31,18 +30,14 @@ class DefaultAiAgentServiceTest {
 
         AiRequest request = new AiRequest("sess-1", "user-1", List.of(new AiMessage("user", "hi")), List.of(), false);
 
-        StepVerifier.create(service.chat(request))
-            .assertNext(resp -> {
-                Assertions.assertThat(resp.content()).isEqualTo("hello");
-                Assertions.assertThat(resp.streaming()).isFalse();
-            })
-            .verifyComplete();
+        AiResponse response = service.chat(request);
+        Assertions.assertThat(response.content()).isEqualTo("hello");
+        Assertions.assertThat(response.streaming()).isFalse();
 
-        StepVerifier.create(sessionService.load("sess-1"))
-            .assertNext(session -> Assertions.assertThat(session.messages())
-                .extracting(AiMessage::content)
-                .containsExactly("hi", "hello"))
-            .verifyComplete();
+        AiSession session = sessionService.load("sess-1");
+        Assertions.assertThat(session.messages())
+            .extracting(AiMessage::content)
+            .containsExactly("hi", "hello");
     }
 
     @Test
@@ -60,17 +55,19 @@ class DefaultAiAgentServiceTest {
 
         AiRequest request = new AiRequest("sess-2", "user-2", List.of(new AiMessage("user", "hi")), List.of(), true);
 
-        StepVerifier.create(service.chatStream(request))
-            .expectNextMatches(resp -> resp.streaming() && resp.content().equals("he"))
-            .expectNextMatches(resp -> resp.streaming() && resp.content().equals("llo"))
-            .expectNextMatches(resp -> !resp.streaming() && resp.content().equals("hello"))
-            .verifyComplete();
+        List<AiResponse> responses = service.chatStream(request);
 
-        StepVerifier.create(sessionService.load("sess-2"))
-            .assertNext(session -> Assertions.assertThat(session.messages())
-                .extracting(AiMessage::content)
-                .containsExactly("hi", "hello"))
-            .verifyComplete();
+        Assertions.assertThat(responses)
+            .extracting(AiResponse::content)
+            .containsExactly("he", "llo", "hello");
+        Assertions.assertThat(responses)
+            .extracting(AiResponse::streaming)
+            .containsExactly(true, true, false);
+
+        AiSession session = sessionService.load("sess-2");
+        Assertions.assertThat(session.messages())
+            .extracting(AiMessage::content)
+            .containsExactly("hi", "hello");
     }
 
     @Test
@@ -86,7 +83,7 @@ class DefaultAiAgentServiceTest {
 
         AiRequest request = new AiRequest("sess-3", "user-3", List.of(new AiMessage("user", "hi")), List.of("deleteAll"), false);
 
-        Assertions.assertThatThrownBy(() -> service.chat(request).block())
+        Assertions.assertThatThrownBy(() -> service.chat(request))
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessageContaining("Unknown tools");
     }
@@ -110,7 +107,7 @@ class DefaultAiAgentServiceTest {
 
         AiRequest request = new AiRequest("sess-4", "user-4", List.of(new AiMessage("user", "hi")), List.of("listNodes"), false);
 
-        service.chat(request).block();
+        service.chat(request);
 
         Prompt prompt = chatModel.lastPrompt;
         Assertions.assertThat(prompt.getInstructions().get(0))

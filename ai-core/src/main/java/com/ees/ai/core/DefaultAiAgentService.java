@@ -20,11 +20,8 @@ import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.SystemMessage;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.prompt.Prompt;
-import org.springframework.ai.model.tool.ToolCallingChatOptions;
 import org.springframework.ai.tool.ToolCallback;
 import org.springframework.ai.tool.definition.ToolDefinition;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
 
 public class DefaultAiAgentService implements AiAgentService {
 
@@ -69,87 +66,83 @@ public class DefaultAiAgentService implements AiAgentService {
     }
 
     @Override
-    public Mono<AiResponse> chat(AiRequest request) {
+    public AiResponse chat(AiRequest request) {
         if (request.streaming()) {
             if (!aiAgentProperties.isStreamingEnabled()) {
-                return Mono.error(new IllegalStateException("Streaming chat is disabled by configuration."));
+                throw new IllegalStateException("Streaming chat is disabled by configuration.");
             }
-            return chatStream(request).last();
+            List<AiResponse> streamed = chatStream(request);
+            return streamed.isEmpty() ? new AiResponse(request.sessionId(), "", false) : streamed.get(streamed.size() - 1);
         }
-        return Mono.defer(() -> {
-            int estimatedTokens = estimateTokens(request.messages());
-            rateLimiter.check(request.userId(), estimatedTokens);
-            long start = System.nanoTime();
-            return prepareContext(request)
-                .flatMap(ctx -> Mono.fromCallable(() -> chatModel.call(buildPrompt(ctx.promptMessages(), ctx.toolsAllowed())))
-                    .map(this::extractContent)
-                    .flatMap(content -> persistAssistantMessage(request.sessionId(), content)
-                        .thenReturn(new AiResponse(request.sessionId(), content, false))))
-                .doOnSuccess(resp -> {
-                    recordSuccess(estimatedTokens, start);
-                    audit("chat", request.userId(), resp.content(), null);
-                })
-                .doOnError(error -> {
-                    recordError(estimatedTokens, start);
-                    audit("chat", request.userId(), null, error);
-                });
-        });
+
+        int estimatedTokens = estimateTokens(request.messages());
+        rateLimiter.check(request.userId(), estimatedTokens);
+        long start = System.nanoTime();
+        try {
+            ChatContext ctx = prepareContext(request);
+            String content = extractContent(chatModel.call(buildPrompt(ctx.promptMessages(), ctx.toolsAllowed())));
+            persistAssistantMessage(request.sessionId(), content);
+            recordSuccess(estimatedTokens, start);
+            audit("chat", request.userId(), content, null);
+            return new AiResponse(request.sessionId(), content, false);
+        } catch (Exception ex) {
+            recordError(estimatedTokens, start);
+            audit("chat", request.userId(), null, ex);
+            throw ex instanceof RuntimeException ? (RuntimeException) ex : new RuntimeException(ex);
+        }
     }
 
     @Override
-    public Flux<AiResponse> chatStream(AiRequest request) {
-        if (request.streaming()) {
-            if (!aiAgentProperties.isStreamingEnabled()) {
-                return Flux.error(new IllegalStateException("Streaming chat is disabled by configuration."));
-            }
+    public List<AiResponse> chatStream(AiRequest request) {
+        if (request.streaming() && !aiAgentProperties.isStreamingEnabled()) {
+            throw new IllegalStateException("Streaming chat is disabled by configuration.");
         }
-        return Flux.defer(() -> {
-            int estimatedTokens = estimateTokens(request.messages());
-            rateLimiter.check(request.userId(), estimatedTokens);
-            long start = System.nanoTime();
-            return prepareContext(request)
-                .flatMapMany(ctx -> {
-                    StringBuilder buffer = new StringBuilder();
-                    return streamingChatModel.stream(buildPrompt(ctx.promptMessages(), ctx.toolsAllowed()))
-                        .map(this::extractContent)
-                        .filter(chunk -> chunk != null && !chunk.isBlank())
-                        .map(chunk -> {
-                            buffer.append(chunk);
-                            return new AiResponse(request.sessionId(), chunk, true);
-                        })
-                        .concatWith(Mono.defer(() -> persistAssistantMessage(request.sessionId(), buffer.toString())
-                            .thenReturn(new AiResponse(request.sessionId(), buffer.toString(), false))));
-                })
-                .doOnComplete(() -> {
-                    recordSuccess(estimatedTokens, start);
-                    audit("chatStream", request.userId(), null, null);
-                })
-                .doOnError(error -> {
-                    recordError(estimatedTokens, start);
-                    audit("chatStream", request.userId(), null, error);
-                });
-        });
+
+        int estimatedTokens = estimateTokens(request.messages());
+        rateLimiter.check(request.userId(), estimatedTokens);
+        long start = System.nanoTime();
+        List<AiResponse> responses = new ArrayList<>();
+        StringBuilder buffer = new StringBuilder();
+        try {
+            ChatContext ctx = prepareContext(request);
+            Prompt prompt = buildPrompt(ctx.promptMessages(), ctx.toolsAllowed());
+            streamingChatModel.stream(prompt).toIterable().forEach(chunk -> {
+                String content = extractContent(chunk);
+                if (content != null && !content.isBlank()) {
+                    buffer.append(content);
+                    responses.add(new AiResponse(request.sessionId(), content, true));
+                }
+            });
+            String full = buffer.toString();
+            persistAssistantMessage(request.sessionId(), full);
+            responses.add(new AiResponse(request.sessionId(), full, false));
+            recordSuccess(estimatedTokens, start);
+            audit("chatStream", request.userId(), null, null);
+            return responses;
+        } catch (Exception ex) {
+            recordError(estimatedTokens, start);
+            audit("chatStream", request.userId(), null, ex);
+            throw ex instanceof RuntimeException ? (RuntimeException) ex : new RuntimeException(ex);
+        }
     }
 
-    private Mono<ChatContext> prepareContext(AiRequest request) {
+    private ChatContext prepareContext(AiRequest request) {
         Set<String> allowedTools = resolveAllowedTools(request);
-        return aiSessionService.load(request.sessionId())
-            .flatMap(session -> persistMessages(request.sessionId(), request.messages())
-                .thenReturn(combineMessages(session.messages(), request.messages()))
-                .map(messages -> new ChatContext(messages, allowedTools)));
+        AiSession session = aiSessionService.load(request.sessionId());
+        persistMessages(request.sessionId(), request.messages());
+        List<AiMessage> messages = combineMessages(session.messages(), request.messages());
+        return new ChatContext(messages, allowedTools);
     }
 
-    private Mono<Void> persistAssistantMessage(String sessionId, String content) {
+    private void persistAssistantMessage(String sessionId, String content) {
         if (content == null) {
-            return Mono.empty();
+            return;
         }
-        return aiSessionService.append(sessionId, new AiMessage("assistant", content)).then();
+        aiSessionService.append(sessionId, new AiMessage("assistant", content));
     }
 
-    private Mono<Void> persistMessages(String sessionId, List<AiMessage> messages) {
-        return Flux.fromIterable(messages)
-            .flatMap(message -> aiSessionService.append(sessionId, message))
-            .then();
+    private void persistMessages(String sessionId, List<AiMessage> messages) {
+        messages.forEach(message -> aiSessionService.append(sessionId, message));
     }
 
     private List<AiMessage> combineMessages(List<AiMessage> history, List<AiMessage> incoming) {

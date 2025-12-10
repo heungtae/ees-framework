@@ -6,6 +6,9 @@ import com.ees.framework.handlers.SourceHandler;
 import com.ees.framework.pipeline.PipelineStep;
 import com.ees.framework.sink.Sink;
 import com.ees.framework.source.Source;
+import com.ees.framework.context.FxAffinity;
+import com.ees.framework.workflow.affinity.AffinityKeyResolver;
+import com.ees.framework.workflow.affinity.DefaultAffinityKeyResolver;
 import com.ees.framework.workflow.model.WorkflowGraphDefinition;
 import com.ees.framework.workflow.model.WorkflowNodeDefinition;
 import com.ees.framework.workflow.model.WorkflowNodeKind;
@@ -36,13 +39,19 @@ import java.util.stream.Collectors;
 public class BlockingWorkflowEngine {
 
     private final BatchingOptions batching;
+    private final AffinityKeyResolver affinityKeyResolver;
 
     public BlockingWorkflowEngine() {
-        this(BatchingOptions.defaults());
+        this(BatchingOptions.defaults(), new DefaultAffinityKeyResolver());
     }
 
     public BlockingWorkflowEngine(BatchingOptions batching) {
+        this(batching, new DefaultAffinityKeyResolver());
+    }
+
+    public BlockingWorkflowEngine(BatchingOptions batching, AffinityKeyResolver affinityKeyResolver) {
         this.batching = Objects.requireNonNull(batching, "batching must not be null");
+        this.affinityKeyResolver = Objects.requireNonNull(affinityKeyResolver, "affinityKeyResolver must not be null");
     }
 
     /**
@@ -52,7 +61,19 @@ public class BlockingWorkflowEngine {
      * @param resolver 노드 -> 실제 Bean/구현체 resolve 담당
      */
     public Workflow createWorkflow(WorkflowGraphDefinition graph, WorkflowNodeResolver resolver) {
-        return new DefaultWorkflow(graph, resolver, batching);
+        return new DefaultWorkflow(graph, resolver, batching, affinityKeyResolver);
+    }
+
+    /**
+     * Update the default affinity kind (e.g., equipmentId -> lotId) to align with cluster topology changes.
+     */
+    public void updateAffinityKind(String kind) {
+        if (this.affinityKeyResolver instanceof DefaultAffinityKeyResolver mutable) {
+            mutable.setDefaultKind(kind);
+            log.info("Updated workflow affinity kind to {}", kind);
+        } else {
+            log.warn("Cannot update affinity kind because resolver {} is not mutable", affinityKeyResolver.getClass().getSimpleName());
+        }
     }
 
     /**
@@ -66,6 +87,7 @@ public class BlockingWorkflowEngine {
         private final WorkflowGraphDefinition graph;
         private final WorkflowNodeResolver resolver;
         private final BatchingOptions batching;
+        private final AffinityKeyResolver affinityKeyResolver;
 
         private volatile boolean running;
 
@@ -190,21 +212,30 @@ public class BlockingWorkflowEngine {
             Iterable<FxContext<Object>> iterable,
             SourceHandler<Object> handler
         ) {
-            return mapIterable(iterable, ctx -> handler.supports(ctx) ? handler.handle(ctx) : ctx);
+            return mapIterable(iterable, ctx -> {
+                FxContext<Object> normalized = normalizeAffinity(ctx);
+                return handler.supports(normalized) ? handler.handle(normalized) : normalized;
+            });
         }
 
         private Iterable<FxContext<Object>> applySinkHandler(
             Iterable<FxContext<Object>> iterable,
             SinkHandler<Object> handler
         ) {
-            return mapIterable(iterable, ctx -> handler.supports(ctx) ? handler.handle(ctx) : ctx);
+            return mapIterable(iterable, ctx -> {
+                FxContext<Object> normalized = normalizeAffinity(ctx);
+                return handler.supports(normalized) ? handler.handle(normalized) : normalized;
+            });
         }
 
         private Iterable<FxContext<Object>> applyPipelineStep(
             Iterable<FxContext<Object>> iterable,
             PipelineStep<Object, Object> step
         ) {
-            return mapIterable(iterable, ctx -> step.supports(ctx) ? step.apply(ctx) : ctx);
+            return mapIterable(iterable, ctx -> {
+                FxContext<Object> normalized = normalizeAffinity(ctx);
+                return step.supports(normalized) ? step.apply(normalized) : normalized;
+            });
         }
 
         private Iterable<FxContext<Object>> mapIterable(
@@ -239,7 +270,8 @@ public class BlockingWorkflowEngine {
                     if (!running) {
                         break;
                     }
-                    boolean enqueued = queue.offer(ctx, offerTimeout.toMillis(), TimeUnit.MILLISECONDS);
+                    FxContext<Object> normalized = normalizeAffinity(ctx);
+                    boolean enqueued = queue.offer(normalized, offerTimeout.toMillis(), TimeUnit.MILLISECONDS);
                     if (!enqueued) {
                         throw new IllegalStateException("Workflow queue is full; backpressure threshold exceeded");
                     }
@@ -324,6 +356,25 @@ public class BlockingWorkflowEngine {
         @SuppressWarnings("unused")
         private boolean isSinkNode(WorkflowNodeDefinition node) {
             return node.getKind() == WorkflowNodeKind.SINK;
+        }
+
+        private FxContext<Object> normalizeAffinity(FxContext<Object> context) {
+            FxAffinity resolved = affinityKeyResolver.resolve(context);
+            if (resolved == null || resolved.value() == null) {
+                throw new IllegalStateException("Affinity value is required for ordered/parallel execution");
+            }
+            if (resolved.kind() == null) {
+                throw new IllegalStateException("Affinity kind is required for ordered/parallel execution");
+            }
+            if (affinityKeyResolver instanceof DefaultAffinityKeyResolver resolver) {
+                String expectedKind = resolver.defaultKind();
+                if (expectedKind != null && !expectedKind.equals(resolved.kind())) {
+                    String message = "Affinity kind mismatch: expected %s but got %s".formatted(expectedKind, resolved.kind());
+                    log.error(message);
+                    throw new IllegalStateException(message);
+                }
+            }
+            return context.withAffinity(resolved);
         }
     }
 

@@ -1,7 +1,5 @@
 package com.ees.ai.mcp;
 
-import reactor.core.publisher.Mono;
-
 import java.util.Map;
 
 /**
@@ -9,23 +7,26 @@ import java.util.Map;
  */
 public interface McpClient {
 
-    Mono<String> listNodes();
+    String listNodes();
 
-    Mono<String> describeTopology();
+    String describeTopology();
 
-    Mono<String> startWorkflow(String workflowId, Map<String, Object> params);
+    String startWorkflow(String workflowId, Map<String, Object> params);
 
-    Mono<String> pauseWorkflow(String executionId);
+    String pauseWorkflow(String executionId);
 
-    Mono<String> resumeWorkflow(String executionId);
+    String resumeWorkflow(String executionId);
 
-    Mono<String> cancelWorkflow(String executionId);
+    String cancelWorkflow(String executionId);
 
-    Mono<String> getWorkflowState(String executionId);
+    String getWorkflowState(String executionId);
 
-    Mono<String> assignKey(String group, String partition, String key, String appId);
+    /**
+     * Assign a key for the given group/partition with an explicit affinity kind.
+     */
+    String assignKey(String group, String partition, String kind, String key, String appId);
 
-    Mono<String> lock(String name, long ttlSeconds);
+    String lock(String name, long ttlSeconds);
 
-    Mono<String> releaseLock(String name);
+    String releaseLock(String name);
 }

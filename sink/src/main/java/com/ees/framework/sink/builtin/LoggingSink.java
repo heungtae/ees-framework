@@ -6,8 +6,6 @@ import com.ees.framework.sink.Sink;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
-import reactor.core.publisher.Mono;
-
 /**
  * 컨텍스트 내용을 로그로 출력하는 기본 Sink 구현.
  */
@@ -18,7 +16,7 @@ public class LoggingSink implements Sink<Object> {
     private static final Logger log = LoggerFactory.getLogger(LoggingSink.class);
 
     @Override
-    public Mono<Void> write(FxContext<Object> context) {
+    public void write(FxContext<Object> context) {
         if (log.isInfoEnabled()) {
             log.info("[LoggingSink] command={} payload={} headers={} meta={}",
                 context.command(),
@@ -26,6 +24,5 @@ public class LoggingSink implements Sink<Object> {
                 context.headers().values(),
                 context.meta());
         }
-        return Mono.empty();
     }
 }

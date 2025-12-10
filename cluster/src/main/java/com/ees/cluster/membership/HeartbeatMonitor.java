@@ -1,13 +1,13 @@
 package com.ees.cluster.membership;
 
 import com.ees.cluster.model.ClusterNode;
-import reactor.core.Disposable;
-import reactor.core.publisher.Flux;
-import reactor.core.scheduler.Scheduler;
-import reactor.core.scheduler.Schedulers;
 
 import java.time.Duration;
 import java.util.Objects;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class HeartbeatMonitor implements AutoCloseable {
@@ -15,21 +15,21 @@ public class HeartbeatMonitor implements AutoCloseable {
     private final ClusterMembershipService membershipService;
     private final ClusterMembershipProperties properties;
     private final ClusterNode localNode;
-    private final Scheduler scheduler;
+    private final ScheduledExecutorService scheduler;
     private final AtomicBoolean running = new AtomicBoolean(false);
-    private Disposable heartbeatLoop;
-    private Disposable detectionLoop;
+    private ScheduledFuture<?> heartbeatLoop;
+    private ScheduledFuture<?> detectionLoop;
 
     public HeartbeatMonitor(ClusterMembershipService membershipService,
                             ClusterMembershipProperties properties,
                             ClusterNode localNode) {
-        this(membershipService, properties, localNode, Schedulers.parallel());
+        this(membershipService, properties, localNode, Executors.newScheduledThreadPool(2));
     }
 
     public HeartbeatMonitor(ClusterMembershipService membershipService,
                             ClusterMembershipProperties properties,
                             ClusterNode localNode,
-                            Scheduler scheduler) {
+                            ScheduledExecutorService scheduler) {
         this.membershipService = Objects.requireNonNull(membershipService, "membershipService must not be null");
         this.properties = Objects.requireNonNull(properties, "properties must not be null");
         this.localNode = Objects.requireNonNull(localNode, "localNode must not be null");
@@ -40,14 +40,30 @@ public class HeartbeatMonitor implements AutoCloseable {
         if (!running.compareAndSet(false, true)) {
             return;
         }
-        membershipService.join(localNode).block();
-        heartbeatLoop = Flux.interval(properties.heartbeatInterval(), scheduler)
-                .flatMap(tick -> membershipService.heartbeat(localNode.nodeId()))
-                .subscribe();
+        membershipService.join(localNode);
+        heartbeatLoop = scheduler.scheduleAtFixedRate(
+            () -> {
+                try {
+                    membershipService.heartbeat(localNode.nodeId());
+                } catch (Exception ignored) {
+                }
+            },
+            properties.heartbeatInterval().toMillis(),
+            properties.heartbeatInterval().toMillis(),
+            TimeUnit.MILLISECONDS
+        );
         Duration detectionInterval = properties.heartbeatTimeout().dividedBy(2);
-        detectionLoop = Flux.interval(detectionInterval, scheduler)
-                .flatMap(tick -> membershipService.detectTimeouts())
-                .subscribe();
+        detectionLoop = scheduler.scheduleAtFixedRate(
+            () -> {
+                try {
+                    membershipService.detectTimeouts();
+                } catch (Exception ignored) {
+                }
+            },
+            detectionInterval.toMillis(),
+            detectionInterval.toMillis(),
+            TimeUnit.MILLISECONDS
+        );
     }
 
     @Override
@@ -60,11 +76,11 @@ public class HeartbeatMonitor implements AutoCloseable {
             return;
         }
         if (heartbeatLoop != null) {
-            heartbeatLoop.dispose();
+            heartbeatLoop.cancel(true);
         }
         if (detectionLoop != null) {
-            detectionLoop.dispose();
+            detectionLoop.cancel(true);
         }
-        membershipService.leave(localNode.nodeId()).block();
+        membershipService.leave(localNode.nodeId());
     }
 }

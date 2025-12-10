@@ -2,12 +2,13 @@ package com.ees.metadatastore;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import reactor.test.StepVerifier;
 
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -26,23 +27,25 @@ class InMemoryMetadataStoreTest {
 
     @Test
     void putAndExpire() {
-        store.put("key", "value", Duration.ofSeconds(1)).block();
-        Optional<String> value = store.get("key", String.class).block();
+        store.put("key", "value", Duration.ofSeconds(1));
+        Optional<String> value = store.get("key", String.class);
         assertTrue(value.isPresent());
         assertEquals("value", value.get());
 
         clock.advance(Duration.ofSeconds(2));
-        Optional<String> expired = store.get("key", String.class).block();
+        Optional<String> expired = store.get("key", String.class);
         assertTrue(expired.isEmpty());
     }
 
     @Test
     void watchEmitsEvents() {
-        StepVerifier.create(store.watch("prefix"))
-                .then(() -> store.put("prefix/a", "v", Duration.ofSeconds(5)).block())
-                .assertNext(event -> assertEquals(MetadataStoreEventType.PUT, event.type()))
-                .thenCancel()
-                .verify();
+        List<MetadataStoreEvent> events = new ArrayList<>();
+        store.watch("prefix", events::add);
+
+        store.put("prefix/a", "v", Duration.ofSeconds(5));
+
+        assertEquals(1, events.size());
+        assertEquals(MetadataStoreEventType.PUT, events.get(0).type());
     }
 
     private static class TestClock extends Clock {

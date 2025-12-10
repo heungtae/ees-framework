@@ -11,8 +11,6 @@ import com.ees.framework.context.FxMessage;
 import com.ees.framework.context.FxMeta;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
-import reactor.core.publisher.Mono;
-import reactor.test.StepVerifier;
 
 import java.util.List;
 import java.util.Map;
@@ -28,17 +26,16 @@ class AiAgentPipelineStepTest {
             FxCommand.of("workflow-cmd"),
             FxHeaders.empty(),
             FxMessage.now("source", "input"),
-            FxMeta.empty()
+            FxMeta.empty(),
+            com.ees.framework.context.FxAffinity.none()
         );
 
-        StepVerifier.create(step.apply(context))
-            .assertNext(result -> {
-                Assertions.assertThat(result.meta().attributes())
-                    .containsEntry(AiAgentPipelineStep.ATTR_RESPONSE, "decision");
-                Assertions.assertThat(result.meta().attributes()).containsEntry(AiAgentPipelineStep.ATTR_SESSION, "workflow-cmd");
-                Assertions.assertThat(result.meta().pipelineStep()).isEqualTo(AiAgentPipelineStep.PIPELINE_STEP);
-            })
-            .verifyComplete();
+        FxContext<Object> result = step.apply(context);
+
+        Assertions.assertThat(result.meta().attributes())
+            .containsEntry(AiAgentPipelineStep.ATTR_RESPONSE, "decision");
+        Assertions.assertThat(result.meta().attributes()).containsEntry(AiAgentPipelineStep.ATTR_SESSION, "workflow-cmd");
+        Assertions.assertThat(result.meta().pipelineStep()).isEqualTo(AiAgentPipelineStep.PIPELINE_STEP);
     }
 
     @Test
@@ -53,12 +50,11 @@ class AiAgentPipelineStepTest {
             new FxMeta("session-1", null, 0, Map.of(
                 AiAgentPipelineStep.ATTR_PROMPT, "system guidance",
                 AiAgentPipelineStep.ATTR_TOOLS_ALLOWED, List.of("listNodes", "describeTopology")
-            ))
+            )),
+            com.ees.framework.context.FxAffinity.none()
         );
 
-        StepVerifier.create(step.apply(context))
-            .expectNextCount(1)
-            .verifyComplete();
+        step.apply(context);
 
         Assertions.assertThat(recording.lastRequest).isNotNull();
         Assertions.assertThat(recording.lastRequest.sessionId()).isEqualTo("session-1");
@@ -72,24 +68,25 @@ class AiAgentPipelineStepTest {
 
     @Test
     void shouldAttachErrorWhenAiCallFails() {
-        AiAgentService failing = request -> Mono.error(new IllegalStateException("ai unavailable"));
+        AiAgentService failing = request -> {
+            throw new IllegalStateException("ai unavailable");
+        };
         AiAgentPipelineStep step = new AiAgentPipelineStep(failing);
 
         FxContext<Object> context = new FxContext<>(
             FxCommand.of("workflow-cmd"),
             FxHeaders.empty(),
             FxMessage.now("source", "input"),
-            FxMeta.empty()
+            FxMeta.empty(),
+            com.ees.framework.context.FxAffinity.none()
         );
 
-        StepVerifier.create(step.apply(context))
-            .assertNext(result -> {
-                Assertions.assertThat(result.meta().attributes())
-                    .containsEntry(AiAgentPipelineStep.ATTR_ERROR, "ai unavailable");
-                Assertions.assertThat(result.meta().pipelineStep()).isEqualTo(AiAgentPipelineStep.PIPELINE_STEP);
-                Assertions.assertThat(result.meta().retries()).isEqualTo(1);
-            })
-            .verifyComplete();
+        FxContext<Object> result = step.apply(context);
+
+        Assertions.assertThat(result.meta().attributes())
+            .containsEntry(AiAgentPipelineStep.ATTR_ERROR, "ai unavailable");
+        Assertions.assertThat(result.meta().pipelineStep()).isEqualTo(AiAgentPipelineStep.PIPELINE_STEP);
+        Assertions.assertThat(result.meta().retries()).isEqualTo(1);
     }
 
     private static class StubAiAgentService implements AiAgentService {
@@ -101,8 +98,8 @@ class AiAgentPipelineStepTest {
         }
 
         @Override
-        public Mono<AiResponse> chat(AiRequest request) {
-            return Mono.just(new AiResponse(request.sessionId(), content, false));
+        public AiResponse chat(AiRequest request) {
+            return new AiResponse(request.sessionId(), content, false);
         }
     }
 
@@ -111,9 +108,9 @@ class AiAgentPipelineStepTest {
         private AiRequest lastRequest;
 
         @Override
-        public Mono<AiResponse> chat(AiRequest request) {
+        public AiResponse chat(AiRequest request) {
             this.lastRequest = request;
-            return Mono.just(new AiResponse(request.sessionId(), "ok", false));
+            return new AiResponse(request.sessionId(), "ok", false);
         }
     }
 }

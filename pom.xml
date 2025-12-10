@@ -30,8 +30,7 @@
 
     <properties>
         <java.version>21</java.version>
-        <spring.boot.version>3.3.0</spring.boot.version>
-        <reactor.version>3.6.0</reactor.version>
+        <spring.boot.version>3.4.7</spring.boot.version>
         <maven.compiler.release>${java.version}</maven.compiler.release>
         <spring.ai.version>1.1.1</spring.ai.version>
     </properties>

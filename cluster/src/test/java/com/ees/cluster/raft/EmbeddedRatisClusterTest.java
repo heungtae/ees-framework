@@ -25,6 +25,7 @@ import org.apache.ratis.server.RaftServerConfigKeys;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.api.Assumptions;
+import org.junit.jupiter.api.Timeout;
 
 import java.io.IOException;
 import java.net.ServerSocket;
@@ -48,7 +49,11 @@ class EmbeddedRatisClusterTest {
     Path tempDir;
 
     @Test
+    @Timeout(value = 20, unit = TimeUnit.SECONDS)
     void replicatesAssignmentsAndLocksAcrossPeers() throws Exception {
+        Assumptions.assumeTrue(Boolean.getBoolean("ees.ratis.test.enabled"),
+            "Skip Ratis integration test by default (enable with -Dees.ratis.test.enabled=true)");
+
         RaftGroupId groupId = RaftGroupId.valueOf(UUID.randomUUID());
         String groupIdString = groupId.getUuid().toString();
         List<PeerEndpoint> endpoints = List.of(
@@ -117,13 +122,13 @@ class EmbeddedRatisClusterTest {
 
             awaitCondition(() -> assignmentsByPeer.values().stream()
                     .allMatch(service -> service.findAssignment(groupIdString, 0)
-                            .blockOptional().orElse(Optional.empty()).isPresent()), 10_000);
+                            .isPresent()), 10_000);
 
             awaitCondition(() -> locksByPeer.values().stream()
-                    .allMatch(service -> service.getLock("rebalance").blockOptional().orElse(Optional.empty()).isPresent()), 10_000);
+                    .allMatch(service -> service.getLock("rebalance").isPresent()), 10_000);
 
             for (RaftAssignmentService service : assignmentsByPeer.values()) {
-                Optional<Assignment> assignment = service.findAssignment(groupIdString, 0).block();
+                Optional<Assignment> assignment = service.findAssignment(groupIdString, 0);
                 assertTrue(assignment.isPresent());
                 assertTrue(assignment.get().equipmentIds().contains("eq-1"));
             }

@@ -4,7 +4,6 @@ import com.ees.framework.annotations.SinkHandlerComponent;
 import com.ees.framework.context.FxContext;
 import com.ees.framework.context.FxMeta;
 import com.ees.framework.handlers.SinkHandler;
-import reactor.core.publisher.Mono;
 
 import java.time.Instant;
 import java.util.HashMap;
@@ -17,7 +16,7 @@ import java.util.Map;
 public class AuditSinkHandler implements SinkHandler<String> {
 
     @Override
-    public Mono<FxContext<String>> handle(FxContext<String> context) {
+    public FxContext<String> handle(FxContext<String> context) {
         Map<String, Object> attributes = new HashMap<>(context.meta().attributes());
         attributes.put("auditedBy", "AuditSinkHandler");
         attributes.put("auditedAt", Instant.now().toString());
@@ -28,7 +27,7 @@ public class AuditSinkHandler implements SinkHandler<String> {
             context.meta().retries(),
             attributes
         );
-        return Mono.just(context.withMeta(meta));
+        return context.withMeta(meta);
     }
 
     @Override

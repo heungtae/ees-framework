@@ -1,10 +1,8 @@
 package com.ees.ai.core;
 
-import reactor.core.publisher.Mono;
-
 public interface AiSessionService {
 
-    Mono<AiSession> load(String sessionId);
+    AiSession load(String sessionId);
 
-    Mono<AiSession> append(String sessionId, AiMessage message);
+    AiSession append(String sessionId, AiMessage message);
 }

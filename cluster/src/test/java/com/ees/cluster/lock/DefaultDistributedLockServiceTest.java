@@ -28,37 +28,37 @@ class DefaultDistributedLockServiceTest {
 
     @Test
     void lockAcquisitionAndRefresh() {
-        Optional<LockRecord> acquired = lockService.tryAcquire("job", "node-1", Duration.ofSeconds(5), Map.of()).block();
+        Optional<LockRecord> acquired = lockService.tryAcquire("job", "node-1", Duration.ofSeconds(5), Map.of());
         assertTrue(acquired.isPresent());
 
-        Optional<LockRecord> blocked = lockService.tryAcquire("job", "node-2", Duration.ofSeconds(5), Map.of()).block();
+        Optional<LockRecord> blocked = lockService.tryAcquire("job", "node-2", Duration.ofSeconds(5), Map.of());
         assertTrue(blocked.isEmpty());
 
         clock.advance(Duration.ofSeconds(2));
-        Optional<LockRecord> refreshed = lockService.refresh("job", "node-1", Duration.ofSeconds(5)).block();
+        Optional<LockRecord> refreshed = lockService.refresh("job", "node-1", Duration.ofSeconds(5));
         assertTrue(refreshed.isPresent());
 
         clock.advance(Duration.ofSeconds(4));
-        Optional<LockRecord> stillOwned = lockService.getLock("job").block();
+        Optional<LockRecord> stillOwned = lockService.getLock("job");
         assertTrue(stillOwned.isPresent());
         assertTrue(stillOwned.get().ownerNodeId().equals("node-1"));
     }
 
     @Test
     void lockExpiresAndCanBeReacquired() {
-        lockService.tryAcquire("job", "node-1", Duration.ofSeconds(3), Map.of()).block();
+        lockService.tryAcquire("job", "node-1", Duration.ofSeconds(3), Map.of());
         clock.advance(Duration.ofSeconds(4));
-        Optional<LockRecord> reacquired = lockService.tryAcquire("job", "node-2", Duration.ofSeconds(3), Map.of()).block();
+        Optional<LockRecord> reacquired = lockService.tryAcquire("job", "node-2", Duration.ofSeconds(3), Map.of());
         assertTrue(reacquired.isPresent());
         assertTrue(reacquired.get().ownerNodeId().equals("node-2"));
     }
 
     @Test
     void onlyOwnerCanRelease() {
-        lockService.tryAcquire("job", "node-1", Duration.ofSeconds(3), Map.of()).block();
-        Boolean failed = lockService.release("job", "node-2").block();
+        lockService.tryAcquire("job", "node-1", Duration.ofSeconds(3), Map.of());
+        Boolean failed = lockService.release("job", "node-2");
         assertFalse(failed);
-        Boolean success = lockService.release("job", "node-1").block();
+        Boolean success = lockService.release("job", "node-1");
         assertTrue(success);
     }
 }

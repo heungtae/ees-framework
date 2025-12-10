@@ -1,8 +1,6 @@
 package com.ees.framework.source;
 
 import com.ees.framework.context.FxContext;
-import reactor.core.publisher.Flux;
-
 /**
  * 데이터 입력의 추상화.
  *
@@ -13,5 +11,5 @@ public interface Source<T> {
     /**
      * 외부로부터 데이터를 읽어 FxContext 스트림으로 반환한다.
      */
-    Flux<FxContext<T>> read();
+    Iterable<FxContext<T>> read();
 }

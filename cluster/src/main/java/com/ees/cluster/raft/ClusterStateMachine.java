@@ -184,41 +184,35 @@ public class ClusterStateMachine extends BaseStateMachine {
     }
 
     private CompletionStage<Void> handleCommand(RaftCommandEnvelope envelope) {
-        return switch (envelope.type()) {
+        switch (envelope.type()) {
             case LOCK_ACQUIRE -> {
                 LockCommand cmd = (LockCommand) envelope.command();
-                yield lockService.tryAcquire(cmd.name(), cmd.ownerNodeId(), Duration.ofMillis(cmd.leaseMillis()), cmd.metadata())
-                        .then()
-                        .toFuture();
+                lockService.tryAcquire(cmd.name(), cmd.ownerNodeId(), Duration.ofMillis(cmd.leaseMillis()), cmd.metadata());
             }
             case LOCK_RELEASE -> {
                 ReleaseLockCommand cmd = (ReleaseLockCommand) envelope.command();
-                yield lockService.release(cmd.name(), cmd.ownerNodeId()).then().toFuture();
+                lockService.release(cmd.name(), cmd.ownerNodeId());
             }
             case ASSIGN_PARTITION -> {
                 AssignPartitionCommand cmd = (AssignPartitionCommand) envelope.command();
                 Assignment assignment = new Assignment(cmd.groupId(), cmd.partition(), cmd.ownerNodeId(),
-                        cmd.equipmentIds(), cmd.workflowHandoff(), 0L, clock.instant());
-                yield assignmentService.applyAssignments(cmd.groupId(), java.util.List.of(assignment)).toFuture();
+                    cmd.affinities(), cmd.workflowHandoff(), 0L, clock.instant());
+                assignmentService.applyAssignments(cmd.groupId(), java.util.List.of(assignment));
             }
             case REVOKE_PARTITION -> {
                 RevokePartitionCommand cmd = (RevokePartitionCommand) envelope.command();
-                yield assignmentService.revokeAssignments(cmd.groupId(), java.util.List.of(cmd.partition()), cmd.reason())
-                        .toFuture();
+                assignmentService.revokeAssignments(cmd.groupId(), java.util.List.of(cmd.partition()), cmd.reason());
             }
             case ASSIGN_KEY -> {
                 AssignKeyCommand cmd = (AssignKeyCommand) envelope.command();
-                yield assignmentService.assignKey(cmd.groupId(), cmd.partition(), cmd.key(), cmd.appId(), cmd.source())
-                        .then()
-                        .toFuture();
+                assignmentService.assignKey(cmd.groupId(), cmd.partition(), cmd.kind(), cmd.key(), cmd.appId(), cmd.source());
             }
             case UNASSIGN_KEY -> {
                 UnassignKeyCommand cmd = (UnassignKeyCommand) envelope.command();
-                yield assignmentService.unassignKey(cmd.groupId(), cmd.partition(), cmd.key())
-                        .then()
-                        .toFuture();
+                assignmentService.unassignKey(cmd.groupId(), cmd.partition(), cmd.kind(), cmd.key());
             }
-        };
+        }
+        return java.util.concurrent.CompletableFuture.completedFuture(null);
     }
 
     private void maybeTriggerSnapshot() {

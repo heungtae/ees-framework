@@ -4,25 +4,55 @@ import com.ees.cluster.model.Assignment;
 import com.ees.cluster.model.KeyAssignment;
 import com.ees.cluster.model.KeyAssignmentSource;
 import com.ees.cluster.model.TopologyEvent;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
 
 import java.util.Collection;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.function.Consumer;
+
+import static com.ees.cluster.model.AffinityKeys.DEFAULT;
 
 public interface AssignmentService {
 
-    Mono<Void> applyAssignments(String groupId, Collection<Assignment> assignments);
+    String DEFAULT_AFFINITY_KIND = DEFAULT;
 
-    Mono<Void> revokeAssignments(String groupId, Collection<Integer> partitions, String reason);
+    void applyAssignments(String groupId, Collection<Assignment> assignments);
 
-    Mono<Optional<Assignment>> findAssignment(String groupId, int partition);
+    void revokeAssignments(String groupId, Collection<Integer> partitions, String reason);
 
-    Mono<KeyAssignment> assignKey(String groupId, int partition, String key, String appId, KeyAssignmentSource source);
+    Optional<Assignment> findAssignment(String groupId, int partition);
 
-    Mono<Optional<KeyAssignment>> getKeyAssignment(String groupId, int partition, String key);
+    default KeyAssignment assignKey(String groupId, int partition, String key, String appId, KeyAssignmentSource source) {
+        return assignKey(groupId, partition, DEFAULT_AFFINITY_KIND, key, appId, source);
+    }
 
-    Mono<Boolean> unassignKey(String groupId, int partition, String key);
+    default <T> Optional<KeyAssignment> assignKey(String groupId,
+                                                  int partition,
+                                                  T record,
+                                                  AffinityKeyExtractor<T> extractor,
+                                                  String appId,
+                                                  KeyAssignmentSource source) {
+        Objects.requireNonNull(extractor, "extractor must not be null");
+        String key = extractor.extract(record);
+        if (key == null || key.isEmpty()) {
+            return Optional.empty();
+        }
+        return Optional.of(assignKey(groupId, partition, extractor.kind(), key, appId, source));
+    }
 
-    Flux<TopologyEvent> topologyEvents();
+    KeyAssignment assignKey(String groupId, int partition, String kind, String key, String appId, KeyAssignmentSource source);
+
+    default Optional<KeyAssignment> getKeyAssignment(String groupId, int partition, String key) {
+        return getKeyAssignment(groupId, partition, DEFAULT_AFFINITY_KIND, key);
+    }
+
+    Optional<KeyAssignment> getKeyAssignment(String groupId, int partition, String kind, String key);
+
+    default boolean unassignKey(String groupId, int partition, String key) {
+        return unassignKey(groupId, partition, DEFAULT_AFFINITY_KIND, key);
+    }
+
+    boolean unassignKey(String groupId, int partition, String kind, String key);
+
+    void topologyEvents(Consumer<TopologyEvent> consumer);
 }

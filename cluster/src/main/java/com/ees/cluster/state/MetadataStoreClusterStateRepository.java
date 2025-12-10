@@ -3,8 +3,6 @@ package com.ees.cluster.state;
 import com.ees.metadatastore.MetadataStore;
 import com.ees.metadatastore.MetadataStoreEvent;
 import com.ees.metadatastore.MetadataStoreEventType;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
 
 import java.time.Duration;
 import java.util.Objects;
@@ -19,39 +17,38 @@ public class MetadataStoreClusterStateRepository implements ClusterStateReposito
     }
 
     @Override
-    public <T> Mono<Boolean> put(String key, T value, Duration ttl) {
+    public <T> boolean put(String key, T value, Duration ttl) {
         return delegate.put(key, value, ttl);
     }
 
     @Override
-    public <T> Mono<Boolean> putIfAbsent(String key, T value, Duration ttl) {
+    public <T> boolean putIfAbsent(String key, T value, Duration ttl) {
         return delegate.putIfAbsent(key, value, ttl);
     }
 
     @Override
-    public <T> Mono<Optional<T>> get(String key, Class<T> type) {
+    public <T> Optional<T> get(String key, Class<T> type) {
         return delegate.get(key, type);
     }
 
     @Override
-    public Mono<Boolean> delete(String key) {
+    public boolean delete(String key) {
         return delegate.delete(key);
     }
 
     @Override
-    public <T> Mono<Boolean> compareAndSet(String key, T expectedValue, T newValue, Duration ttl) {
+    public <T> boolean compareAndSet(String key, T expectedValue, T newValue, Duration ttl) {
         return delegate.compareAndSet(key, expectedValue, newValue, ttl);
     }
 
     @Override
-    public <T> Flux<T> scan(String prefix, Class<T> type) {
+    public <T> java.util.List<T> scan(String prefix, Class<T> type) {
         return delegate.scan(prefix, type);
     }
 
     @Override
-    public Flux<ClusterStateEvent> watch(String prefix) {
-        return delegate.watch(prefix)
-                .map(this::mapEvent);
+    public void watch(String prefix, java.util.function.Consumer<ClusterStateEvent> consumer) {
+        delegate.watch(prefix, event -> consumer.accept(mapEvent(event)));
     }
 
     private ClusterStateEvent mapEvent(MetadataStoreEvent event) {

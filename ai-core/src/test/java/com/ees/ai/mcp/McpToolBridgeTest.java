@@ -8,7 +8,6 @@ import java.util.List;
 import java.util.Map;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
-import reactor.core.publisher.Mono;
 
 class McpToolBridgeTest {
 
@@ -38,54 +37,54 @@ class McpToolBridgeTest {
         Map<String, String> called = new HashMap<>();
 
         @Override
-        public Mono<String> listNodes() {
-            return Mono.just("nodes");
+        public String listNodes() {
+            return "nodes";
         }
 
         @Override
-        public Mono<String> describeTopology() {
-            return Mono.just("topology");
+        public String describeTopology() {
+            return "topology";
         }
 
         @Override
-        public Mono<String> startWorkflow(String workflowId, Map<String, Object> params) {
+        public String startWorkflow(String workflowId, Map<String, Object> params) {
             called.put("startWorkflow", workflowId);
-            return Mono.just("started-" + workflowId);
+            return "started-" + workflowId;
         }
 
         @Override
-        public Mono<String> pauseWorkflow(String executionId) {
-            return Mono.empty();
+        public String pauseWorkflow(String executionId) {
+            return "";
         }
 
         @Override
-        public Mono<String> resumeWorkflow(String executionId) {
-            return Mono.empty();
+        public String resumeWorkflow(String executionId) {
+            return "";
         }
 
         @Override
-        public Mono<String> cancelWorkflow(String executionId) {
-            return Mono.empty();
+        public String cancelWorkflow(String executionId) {
+            return "";
         }
 
         @Override
-        public Mono<String> getWorkflowState(String executionId) {
-            return Mono.empty();
+        public String getWorkflowState(String executionId) {
+            return "";
         }
 
         @Override
-        public Mono<String> assignKey(String group, String partition, String key, String appId) {
-            return Mono.empty();
+        public String assignKey(String group, String partition, String kind, String key, String appId) {
+            return "";
         }
 
         @Override
-        public Mono<String> lock(String name, long ttl) {
-            return Mono.empty();
+        public String lock(String name, long ttl) {
+            return "";
         }
 
         @Override
-        public Mono<String> releaseLock(String name) {
-            return Mono.empty();
+        public String releaseLock(String name) {
+            return "";
         }
     }
 

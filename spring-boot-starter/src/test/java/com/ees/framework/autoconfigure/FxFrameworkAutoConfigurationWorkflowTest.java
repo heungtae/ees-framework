@@ -14,7 +14,7 @@ import com.ees.framework.handlers.SourceHandler;
 import com.ees.framework.pipeline.PipelineStep;
 import com.ees.framework.sink.Sink;
 import com.ees.framework.source.Source;
-import com.ees.framework.workflow.engine.ReactorWorkflowEngine;
+import com.ees.framework.workflow.engine.BlockingWorkflowEngine;
 import com.ees.framework.workflow.engine.Workflow;
 import com.ees.framework.workflow.engine.WorkflowNodeResolver;
 import com.ees.framework.workflow.engine.WorkflowRuntime;
@@ -25,20 +25,21 @@ import com.ees.framework.workflow.model.WorkflowNodeDefinition;
 import com.ees.framework.workflow.model.WorkflowNodeKind;
 import com.ees.framework.workflow.util.LinearToGraphConverter;
 import com.ees.framework.workflow.util.WorkflowGraphValidator;
+import com.ees.cluster.spring.ClusterAutoConfiguration;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.context.annotation.Bean;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 class FxFrameworkAutoConfigurationWorkflowTest {
 
     private final ApplicationContextRunner contextRunner = new ApplicationContextRunner()
-        .withConfiguration(AutoConfigurations.of(FxFrameworkAutoConfiguration.class))
+        .withConfiguration(AutoConfigurations.of(FxFrameworkAutoConfiguration.class, ClusterAutoConfiguration.class))
         .withUserConfiguration(SampleWorkflowConfig.class);
 
     @Test
@@ -62,7 +63,7 @@ class FxFrameworkAutoConfigurationWorkflowTest {
             assertThat(resolver.resolve(nodeOfKind(graph, WorkflowNodeKind.SINK)))
                 .isSameAs(context.getBean(SampleSink.class));
 
-            ReactorWorkflowEngine engine = context.getBean(ReactorWorkflowEngine.class);
+            BlockingWorkflowEngine engine = context.getBean(BlockingWorkflowEngine.class);
             Workflow workflow = engine.createWorkflow(graph, resolver);
             assertThat(workflow.getName()).isEqualTo("sample-workflow");
             assertThat(graph.getStartNodeId()).isEqualTo("source");
@@ -120,6 +121,11 @@ class FxFrameworkAutoConfigurationWorkflowTest {
         }
 
         @Bean
+        MeterRegistry meterRegistry() {
+            return new SimpleMeterRegistry();
+        }
+
+        @Bean
         SampleSink sampleSink() {
             return new SampleSink();
         }
@@ -128,41 +134,40 @@ class FxFrameworkAutoConfigurationWorkflowTest {
     @FxSource(type = "sample-source")
     static class SampleSource implements Source<String> {
         @Override
-        public Flux<FxContext<String>> read() {
+        public Iterable<FxContext<String>> read() {
             FxMessage<String> message = FxMessage.now("sample-source", "payload");
-            return Flux.just(FxContext.of(message, FxCommand.of("ingest")));
+            return java.util.List.of(FxContext.of(message, FxCommand.of("ingest")));
         }
     }
 
     @SourceHandlerComponent("srcHandler")
     static class SampleSourceHandler implements SourceHandler<String> {
         @Override
-        public Mono<FxContext<String>> handle(FxContext<String> context) {
-            return Mono.just(context);
+        public FxContext<String> handle(FxContext<String> context) {
+            return context;
         }
     }
 
     @FxPipelineStep("enrich")
     static class SamplePipelineStep implements PipelineStep<String, String> {
         @Override
-        public Mono<FxContext<String>> apply(FxContext<String> context) {
-            return Mono.just(context);
+        public FxContext<String> apply(FxContext<String> context) {
+            return context;
         }
     }
 
     @SinkHandlerComponent("sinkHandler")
     static class SampleSinkHandler implements SinkHandler<String> {
         @Override
-        public Mono<FxContext<String>> handle(FxContext<String> context) {
-            return Mono.just(context);
+        public FxContext<String> handle(FxContext<String> context) {
+            return context;
         }
     }
 
     @FxSink("sample-sink")
     static class SampleSink implements Sink<String> {
         @Override
-        public Mono<Void> write(FxContext<String> context) {
-            return Mono.empty();
+        public void write(FxContext<String> context) {
         }
     }
 }

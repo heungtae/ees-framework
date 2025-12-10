@@ -10,8 +10,6 @@ import com.ees.cluster.state.InMemoryClusterStateRepository;
 import com.ees.cluster.support.MutableClock;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import reactor.core.publisher.Flux;
-import reactor.test.StepVerifier;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -41,45 +39,36 @@ class DefaultClusterMembershipServiceTest {
     @Test
     void joinAndHeartbeatEmitEvents() {
         ClusterNode node = node("node-1");
-        Flux<MembershipEventType> events = membershipService.events()
-                .map(MembershipEvent::type)
-                .take(2);
+        java.util.List<MembershipEventType> events = new java.util.ArrayList<>();
+        membershipService.events(event -> events.add(event.type()));
 
-        membershipService.join(node).block();
+        membershipService.join(node);
         clock.advance(Duration.ofSeconds(1));
-        membershipService.heartbeat(node.nodeId()).block();
+        membershipService.heartbeat(node.nodeId());
 
-        StepVerifier.create(events)
-                .expectNext(MembershipEventType.JOINED)
-                .expectNext(MembershipEventType.HEARTBEAT)
-                .verifyComplete();
+        assertEquals(java.util.List.of(MembershipEventType.JOINED, MembershipEventType.HEARTBEAT), events);
     }
 
     @Test
     void detectTimeoutsMovesNodeToSuspectThenDown() {
         ClusterNode node = node("node-1");
-        Flux<MembershipEventType> events = membershipService.events()
-                .map(MembershipEvent::type)
-                .take(3);
+        java.util.List<MembershipEventType> events = new java.util.ArrayList<>();
+        membershipService.events(event -> events.add(event.type()));
 
-        membershipService.join(node).block();
+        membershipService.join(node);
         clock.advance(Duration.ofSeconds(6));
-        membershipService.detectTimeouts().block();
-        Optional<ClusterNodeRecord> suspect = membershipService.findNode(node.nodeId()).block();
+        membershipService.detectTimeouts();
+        Optional<ClusterNodeRecord> suspect = membershipService.findNode(node.nodeId());
         assertTrue(suspect.isPresent());
         assertEquals(ClusterNodeStatus.SUSPECT, suspect.get().status());
 
         clock.advance(Duration.ofSeconds(4));
-        membershipService.detectTimeouts().block();
-        Optional<ClusterNodeRecord> down = membershipService.findNode(node.nodeId()).block();
+        membershipService.detectTimeouts();
+        Optional<ClusterNodeRecord> down = membershipService.findNode(node.nodeId());
         assertTrue(down.isPresent());
         assertEquals(ClusterNodeStatus.DOWN, down.get().status());
 
-        StepVerifier.create(events)
-                .expectNext(MembershipEventType.JOINED)
-                .expectNext(MembershipEventType.SUSPECTED)
-                .expectNext(MembershipEventType.DOWN)
-                .verifyComplete();
+        assertEquals(java.util.List.of(MembershipEventType.JOINED, MembershipEventType.SUSPECTED, MembershipEventType.DOWN), events);
     }
 
     private ClusterNode node(String id) {

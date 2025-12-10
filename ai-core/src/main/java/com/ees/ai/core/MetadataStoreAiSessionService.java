@@ -7,7 +7,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import reactor.core.publisher.Mono;
 
 /**
  * AiSessionService backed by MetadataStore for persistence.
@@ -25,27 +24,24 @@ public class MetadataStoreAiSessionService implements AiSessionService {
     }
 
     @Override
-    public Mono<AiSession> load(String sessionId) {
-        return metadataStore.get(key(sessionId), StoredSession.class)
-            .map(optional -> optional
-                .map(record -> new AiSession(sessionId, record.messages(), record.updatedAt()))
-                .orElseGet(() -> new AiSession(sessionId, List.of(), Instant.now())));
+    public AiSession load(String sessionId) {
+        Optional<StoredSession> stored = metadataStore.get(key(sessionId), StoredSession.class);
+        return stored
+            .map(record -> new AiSession(sessionId, record.messages(), record.updatedAt()))
+            .orElseGet(() -> new AiSession(sessionId, List.of(), Instant.now()));
     }
 
     @Override
-    public Mono<AiSession> append(String sessionId, AiMessage message) {
+    public AiSession append(String sessionId, AiMessage message) {
         Instant now = Instant.now();
-        return metadataStore.get(key(sessionId), StoredSession.class)
-            .defaultIfEmpty(Optional.empty())
-            .flatMap(optional -> {
-                List<AiMessage> messages = optional.map(StoredSession::messages)
-                    .map(ArrayList::new)
-                    .orElseGet(ArrayList::new);
-                messages.add(message);
-                StoredSession updated = new StoredSession(messages, now);
-                return metadataStore.put(key(sessionId), updated, ttl)
-                    .thenReturn(new AiSession(sessionId, messages, now));
-            });
+        Optional<StoredSession> optional = metadataStore.get(key(sessionId), StoredSession.class);
+        List<AiMessage> messages = optional.map(StoredSession::messages)
+            .map(ArrayList::new)
+            .orElseGet(ArrayList::new);
+        messages.add(message);
+        StoredSession updated = new StoredSession(messages, now);
+        metadataStore.put(key(sessionId), updated, ttl);
+        return new AiSession(sessionId, messages, now);
     }
 
     private String key(String sessionId) {

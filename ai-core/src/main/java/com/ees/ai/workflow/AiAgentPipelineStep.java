@@ -8,7 +8,6 @@ import com.ees.framework.context.FxContext;
 import com.ees.framework.context.FxMeta;
 import com.ees.framework.pipeline.PipelineStep;
 import org.springframework.stereotype.Component;
-import reactor.core.publisher.Mono;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -35,12 +34,15 @@ public class AiAgentPipelineStep implements PipelineStep<Object, Object> {
     }
 
     @Override
-    public Mono<FxContext<Object>> apply(FxContext<Object> context) {
+    public FxContext<Object> apply(FxContext<Object> context) {
         AiRequest request = buildRequest(context);
 
-        return aiAgentService.chat(request)
-            .map(response -> attachResponse(context, response))
-            .onErrorResume(ex -> Mono.just(attachError(context, ex)));
+        try {
+            com.ees.ai.core.AiResponse response = aiAgentService.chat(request);
+            return attachResponse(context, response);
+        } catch (Exception ex) {
+            return attachError(context, ex);
+        }
     }
 
     private AiRequest buildRequest(FxContext<Object> context) {
@@ -81,7 +83,7 @@ public class AiAgentPipelineStep implements PipelineStep<Object, Object> {
             context.meta().retries(),
             attributes
         );
-        return new FxContext<>(context.command(), context.headers(), context.message(), meta);
+        return new FxContext<>(context.command(), context.headers(), context.message(), meta, context.affinity());
     }
 
     private FxContext<Object> attachError(FxContext<Object> context, Throwable ex) {
@@ -93,7 +95,7 @@ public class AiAgentPipelineStep implements PipelineStep<Object, Object> {
             context.meta().retries() + 1,
             attributes
         );
-        return new FxContext<>(context.command(), context.headers(), context.message(), meta);
+        return new FxContext<>(context.command(), context.headers(), context.message(), meta, context.affinity());
     }
 
     private List<String> extractToolsAllowed(Map<String, Object> attributes) {

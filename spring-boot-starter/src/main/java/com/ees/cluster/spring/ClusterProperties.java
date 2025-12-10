@@ -1,5 +1,6 @@
 package com.ees.cluster.spring;
 
+import com.ees.cluster.model.AffinityKeys;
 import com.ees.cluster.model.ClusterMode;
 import com.ees.cluster.model.ClusterRole;
 import com.ees.cluster.raft.RaftServerConfig;
@@ -33,6 +34,10 @@ public class ClusterProperties {
     private String leaderGroup = "cluster";
     private boolean heartbeatEnabled = true;
     private RaftServerConfig raft = new RaftServerConfig();
+    /**
+        Default affinity kind used when assigning keys (e.g. equipmentId, lotId).
+     */
+    private String assignmentAffinityKind = AffinityKeys.DEFAULT;
 
     public ClusterMode getMode() {
         return mode;
@@ -144,5 +149,13 @@ public class ClusterProperties {
 
     public void setRaft(RaftServerConfig raft) {
         this.raft = raft;
+    }
+
+    public String getAssignmentAffinityKind() {
+        return assignmentAffinityKind;
+    }
+
+    public void setAssignmentAffinityKind(String assignmentAffinityKind) {
+        this.assignmentAffinityKind = assignmentAffinityKind;
     }
 }

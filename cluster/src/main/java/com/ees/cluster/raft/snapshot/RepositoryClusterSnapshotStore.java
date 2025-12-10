@@ -3,7 +3,6 @@ package com.ees.cluster.raft.snapshot;
 import com.ees.cluster.state.ClusterStateRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import reactor.core.publisher.Mono;
 
 import java.io.IOException;
 import java.time.Duration;
@@ -26,9 +25,7 @@ public class RepositoryClusterSnapshotStore implements ClusterSnapshotStore {
 
     @Override
     public Optional<ClusterSnapshot> loadLatest(String groupId) throws IOException {
-        Optional<byte[]> blob = repository.get(key(groupId), byte[].class)
-                .blockOptional()
-                .orElse(Optional.empty());
+        Optional<byte[]> blob = repository.get(key(groupId), byte[].class);
         if (blob.isEmpty()) {
             return Optional.empty();
         }
@@ -38,8 +35,7 @@ public class RepositoryClusterSnapshotStore implements ClusterSnapshotStore {
     @Override
     public void persist(ClusterSnapshot snapshot) throws IOException {
         byte[] data = ClusterSnapshotCodec.serialize(snapshot);
-        Mono<Boolean> write = repository.put(key(snapshot.groupId()), data, Duration.ZERO);
-        write.blockOptional();
+        repository.put(key(snapshot.groupId()), data, Duration.ZERO);
         log.info("Persisted snapshot for group {} to repository (term={}, index={}, takenAt={})",
                 snapshot.groupId(), snapshot.term(), snapshot.index(), snapshot.takenAt());
     }

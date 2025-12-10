@@ -7,9 +7,6 @@ import com.ees.cluster.model.KeyAssignmentSource;
 import com.ees.cluster.model.TopologyEvent;
 import com.ees.cluster.model.TopologyEventType;
 import com.ees.cluster.state.ClusterStateRepository;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
-import reactor.core.publisher.Sinks;
 
 import java.time.Clock;
 import java.time.Duration;
@@ -19,6 +16,9 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 /**
  * Repository-backed assignment tracker intended to mirror Raft state machine entries.
@@ -31,9 +31,9 @@ public class RaftAssignmentService implements AssignmentService {
 
     private final ClusterStateRepository repository;
     private final Clock clock;
-    private final Sinks.Many<TopologyEvent> sink = Sinks.many().multicast().onBackpressureBuffer();
+    private final CopyOnWriteArrayList<Consumer<TopologyEvent>> listeners = new CopyOnWriteArrayList<>();
     private final Map<String, Map<Integer, Assignment>> cache = new ConcurrentHashMap<>();
-    private final Map<String, Map<Integer, Map<String, KeyAssignment>>> keyCache = new ConcurrentHashMap<>();
+    private final Map<String, Map<Integer, Map<String, Map<String, KeyAssignment>>>> keyCache = new ConcurrentHashMap<>();
     private final Duration ttl;
 
     public RaftAssignmentService(ClusterStateRepository repository, Duration ttl) {
@@ -47,116 +47,117 @@ public class RaftAssignmentService implements AssignmentService {
     }
 
     @Override
-    public Mono<Void> applyAssignments(String groupId, Collection<Assignment> assignments) {
+    public void applyAssignments(String groupId, Collection<Assignment> assignments) {
         Objects.requireNonNull(groupId, "groupId must not be null");
         Objects.requireNonNull(assignments, "assignments must not be null");
         Instant now = clock.instant();
         Map<Integer, Assignment> group = cache.computeIfAbsent(groupId, ignored -> new ConcurrentHashMap<>());
-        return Flux.fromIterable(assignments)
-                .flatMap(assignment -> {
-                    Assignment current = group.get(assignment.partition());
-                    long version = current == null ? 1L : current.version() + 1;
-                    Assignment updated = new Assignment(groupId, assignment.partition(), assignment.ownerNodeId(),
-                            assignment.equipmentIds(), assignment.workflowHandoff(), version, now);
-                    group.put(assignment.partition(), updated);
-                    String key = assignmentKey(groupId, assignment.partition());
-                    return repository.put(key, updated, ttl)
-                            .doOnSuccess(ignored -> emit(new TopologyEvent(
-                                    current == null ? TopologyEventType.ASSIGNED : TopologyEventType.UPDATED,
-                                    updated,
-                                    null,
-                                    now)));
-                })
-                .then();
+        assignments.forEach(assignment -> {
+            Assignment current = group.get(assignment.partition());
+            long version = current == null ? 1L : current.version() + 1;
+            Assignment updated = new Assignment(groupId, assignment.partition(), assignment.ownerNodeId(),
+                assignment.affinities(), assignment.workflowHandoff(), version, now);
+            group.put(assignment.partition(), updated);
+            String key = assignmentKey(groupId, assignment.partition());
+            repository.put(key, updated, ttl);
+            emit(new TopologyEvent(
+                current == null ? TopologyEventType.ASSIGNED : TopologyEventType.UPDATED,
+                updated,
+                null,
+                now));
+        });
     }
 
     @Override
-    public Mono<Void> revokeAssignments(String groupId, Collection<Integer> partitions, String reason) {
+    public void revokeAssignments(String groupId, Collection<Integer> partitions, String reason) {
         Objects.requireNonNull(groupId, "groupId must not be null");
         Objects.requireNonNull(partitions, "partitions must not be null");
         Map<Integer, Assignment> group = cache.computeIfAbsent(groupId, ignored -> new ConcurrentHashMap<>());
-        return Flux.fromIterable(partitions)
-                .flatMap(partition -> {
-                    Assignment removed = group.remove(partition);
-                    keyCache.computeIfAbsent(groupId, ignored -> new ConcurrentHashMap<>()).remove(partition);
-                    return repository.delete(assignmentKey(groupId, partition))
-                            .doOnSuccess(ignored -> {
-                                if (removed != null) {
-                                    emit(new TopologyEvent(TopologyEventType.REVOKED, removed, null, clock.instant()));
-                                }
-                            });
-                })
-                .then();
+        partitions.forEach(partition -> {
+            Assignment removed = group.remove(partition);
+            keyCache.computeIfAbsent(groupId, ignored -> new ConcurrentHashMap<>()).remove(partition);
+            boolean deleted = repository.delete(assignmentKey(groupId, partition));
+            if (deleted && removed != null) {
+                emit(new TopologyEvent(TopologyEventType.REVOKED, removed, null, clock.instant()));
+            }
+        });
     }
 
     @Override
-    public Mono<Optional<Assignment>> findAssignment(String groupId, int partition) {
+    public Optional<Assignment> findAssignment(String groupId, int partition) {
         Objects.requireNonNull(groupId, "groupId must not be null");
         Map<Integer, Assignment> group = cache.computeIfAbsent(groupId, ignored -> new ConcurrentHashMap<>());
         Assignment cached = group.get(partition);
         if (cached != null) {
-            return Mono.just(Optional.of(cached));
+            return Optional.of(cached);
         }
-        return repository.get(assignmentKey(groupId, partition), Assignment.class)
-                .doOnNext(opt -> opt.ifPresent(value -> group.put(partition, value)));
+        Optional<Assignment> loaded = repository.get(assignmentKey(groupId, partition), Assignment.class);
+        loaded.ifPresent(value -> group.put(partition, value));
+        return loaded;
     }
 
     @Override
-    public Mono<KeyAssignment> assignKey(String groupId, int partition, String key, String appId, KeyAssignmentSource source) {
+    public KeyAssignment assignKey(String groupId, int partition, String kind, String key, String appId, KeyAssignmentSource source) {
         Objects.requireNonNull(groupId, "groupId must not be null");
+        Objects.requireNonNull(kind, "kind must not be null");
         Objects.requireNonNull(key, "key must not be null");
         Objects.requireNonNull(appId, "appId must not be null");
         Objects.requireNonNull(source, "source must not be null");
         Instant now = clock.instant();
-        Map<Integer, Map<String, KeyAssignment>> group = keyCache.computeIfAbsent(groupId, ignored -> new ConcurrentHashMap<>());
-        Map<String, KeyAssignment> partitionCache = group.computeIfAbsent(partition, ignored -> new ConcurrentHashMap<>());
-        KeyAssignment current = partitionCache.get(key);
+        Map<Integer, Map<String, Map<String, KeyAssignment>>> group = keyCache.computeIfAbsent(groupId, ignored -> new ConcurrentHashMap<>());
+        Map<String, Map<String, KeyAssignment>> partitionCache = group.computeIfAbsent(partition, ignored -> new ConcurrentHashMap<>());
+        Map<String, KeyAssignment> kindCache = partitionCache.computeIfAbsent(kind, ignored -> new ConcurrentHashMap<>());
+        KeyAssignment current = kindCache.get(key);
         long version = current == null ? 1L : current.version() + 1;
-        KeyAssignment updated = new KeyAssignment(groupId, partition, key, appId, source, version, now);
-        partitionCache.put(key, updated);
-        return repository.put(keyAssignmentKey(groupId, partition, key), updated, ttl)
-                .doOnSuccess(ignored -> emit(new TopologyEvent(TopologyEventType.KEY_ASSIGNED,
-                        cache.getOrDefault(groupId, Map.of()).get(partition),
-                        updated,
-                        now)))
-                .thenReturn(updated);
+        KeyAssignment updated = new KeyAssignment(groupId, partition, kind, key, appId, source, version, now);
+        kindCache.put(key, updated);
+        repository.put(keyAssignmentKey(groupId, partition, kind, key), updated, ttl);
+        emit(new TopologyEvent(TopologyEventType.KEY_ASSIGNED,
+            cache.getOrDefault(groupId, Map.of()).get(partition),
+            updated,
+            now));
+        return updated;
     }
 
     @Override
-    public Mono<Optional<KeyAssignment>> getKeyAssignment(String groupId, int partition, String key) {
+    public Optional<KeyAssignment> getKeyAssignment(String groupId, int partition, String kind, String key) {
         Objects.requireNonNull(groupId, "groupId must not be null");
+        Objects.requireNonNull(kind, "kind must not be null");
         Objects.requireNonNull(key, "key must not be null");
-        Map<Integer, Map<String, KeyAssignment>> group = keyCache.computeIfAbsent(groupId, ignored -> new ConcurrentHashMap<>());
-        Map<String, KeyAssignment> partitionCache = group.computeIfAbsent(partition, ignored -> new ConcurrentHashMap<>());
-        KeyAssignment cached = partitionCache.get(key);
+        Map<Integer, Map<String, Map<String, KeyAssignment>>> group = keyCache.computeIfAbsent(groupId, ignored -> new ConcurrentHashMap<>());
+        Map<String, Map<String, KeyAssignment>> partitionCache = group.computeIfAbsent(partition, ignored -> new ConcurrentHashMap<>());
+        Map<String, KeyAssignment> kindCache = partitionCache.computeIfAbsent(kind, ignored -> new ConcurrentHashMap<>());
+        KeyAssignment cached = kindCache.get(key);
         if (cached != null) {
-            return Mono.just(Optional.of(cached));
+            return Optional.of(cached);
         }
-        return repository.get(keyAssignmentKey(groupId, partition, key), KeyAssignment.class)
-                .doOnNext(opt -> opt.ifPresent(value -> partitionCache.put(key, value)));
+        Optional<KeyAssignment> loaded = repository.get(keyAssignmentKey(groupId, partition, kind, key), KeyAssignment.class);
+        loaded.ifPresent(value -> kindCache.put(key, value));
+        return loaded;
     }
 
     @Override
-    public Mono<Boolean> unassignKey(String groupId, int partition, String key) {
+    public boolean unassignKey(String groupId, int partition, String kind, String key) {
         Objects.requireNonNull(groupId, "groupId must not be null");
+        Objects.requireNonNull(kind, "kind must not be null");
         Objects.requireNonNull(key, "key must not be null");
-        Map<Integer, Map<String, KeyAssignment>> group = keyCache.computeIfAbsent(groupId, ignored -> new ConcurrentHashMap<>());
-        Map<String, KeyAssignment> partitionCache = group.computeIfAbsent(partition, ignored -> new ConcurrentHashMap<>());
-        KeyAssignment removed = partitionCache.remove(key);
-        return repository.delete(keyAssignmentKey(groupId, partition, key))
-                .doOnSuccess(ignored -> {
-                    if (removed != null) {
-                        emit(new TopologyEvent(TopologyEventType.KEY_UNASSIGNED,
-                                cache.getOrDefault(groupId, Map.of()).get(partition),
-                                removed,
-                                clock.instant()));
-                    }
-                });
+        Map<Integer, Map<String, Map<String, KeyAssignment>>> group = keyCache.computeIfAbsent(groupId, ignored -> new ConcurrentHashMap<>());
+        Map<String, Map<String, KeyAssignment>> partitionCache = group.computeIfAbsent(partition, ignored -> new ConcurrentHashMap<>());
+        Map<String, KeyAssignment> kindCache = partitionCache.computeIfAbsent(kind, ignored -> new ConcurrentHashMap<>());
+        KeyAssignment removed = kindCache.remove(key);
+        boolean deleted = repository.delete(keyAssignmentKey(groupId, partition, kind, key));
+        if (deleted && removed != null) {
+            emit(new TopologyEvent(TopologyEventType.KEY_UNASSIGNED,
+                cache.getOrDefault(groupId, Map.of()).get(partition),
+                removed,
+                clock.instant()));
+        }
+        return deleted;
     }
 
     @Override
-    public Flux<TopologyEvent> topologyEvents() {
-        return sink.asFlux();
+    public void topologyEvents(Consumer<TopologyEvent> consumer) {
+        listeners.add(consumer);
     }
 
     /**
@@ -171,13 +172,17 @@ public class RaftAssignmentService implements AssignmentService {
     /**
      * Snapshot view of current key assignments for a group.
      */
-    public Map<Integer, Map<String, KeyAssignment>> snapshotKeyAssignments(String groupId) {
+    public Map<Integer, Map<String, Map<String, KeyAssignment>>> snapshotKeyAssignments(String groupId) {
         Objects.requireNonNull(groupId, "groupId must not be null");
-        Map<Integer, Map<String, KeyAssignment>> group = keyCache.getOrDefault(groupId, Map.of());
+        Map<Integer, Map<String, Map<String, KeyAssignment>>> group = keyCache.getOrDefault(groupId, Map.of());
         return group.entrySet().stream()
-                .collect(java.util.stream.Collectors.toUnmodifiableMap(
+                .collect(Collectors.toUnmodifiableMap(
                         Map.Entry::getKey,
-                        entry -> Map.copyOf(entry.getValue())
+                        entry -> entry.getValue().entrySet().stream()
+                                .collect(Collectors.toUnmodifiableMap(
+                                        Map.Entry::getKey,
+                                        kindEntry -> Map.copyOf(kindEntry.getValue())
+                                ))
                 ));
     }
 
@@ -186,7 +191,7 @@ public class RaftAssignmentService implements AssignmentService {
      */
     public void restoreSnapshot(String groupId,
                                 Map<Integer, Assignment> assignments,
-                                Map<Integer, Map<String, KeyAssignment>> keyAssignments) {
+                                Map<Integer, Map<String, Map<String, KeyAssignment>>> keyAssignments) {
         Objects.requireNonNull(groupId, "groupId must not be null");
         Objects.requireNonNull(assignments, "assignments must not be null");
         Objects.requireNonNull(keyAssignments, "keyAssignments must not be null");
@@ -194,15 +199,19 @@ public class RaftAssignmentService implements AssignmentService {
         group.clear();
         group.putAll(assignments);
         assignments.values().forEach(assignment ->
-                repository.put(assignmentKey(groupId, assignment.partition()), assignment, ttl).block());
+                repository.put(assignmentKey(groupId, assignment.partition()), assignment, ttl));
 
-        Map<Integer, Map<String, KeyAssignment>> groupKeys =
+        Map<Integer, Map<String, Map<String, KeyAssignment>>> groupKeys =
                 keyCache.computeIfAbsent(groupId, ignored -> new ConcurrentHashMap<>());
         groupKeys.clear();
         keyAssignments.forEach((partition, keys) -> {
-            Map<String, KeyAssignment> copy = new ConcurrentHashMap<>(keys);
+            Map<String, Map<String, KeyAssignment>> copy = new ConcurrentHashMap<>();
+            keys.forEach((kind, keyedValues) -> {
+                Map<String, KeyAssignment> kindCopy = new ConcurrentHashMap<>(keyedValues);
+                copy.put(kind, kindCopy);
+                kindCopy.forEach((key, value) -> repository.put(keyAssignmentKey(groupId, partition, kind, key), value, ttl));
+            });
             groupKeys.put(partition, copy);
-            copy.forEach((key, value) -> repository.put(keyAssignmentKey(groupId, partition, key), value, ttl).block());
         });
     }
 
@@ -210,11 +219,13 @@ public class RaftAssignmentService implements AssignmentService {
         return ASSIGNMENTS_PREFIX + groupId + "/" + partition;
     }
 
-    private String keyAssignmentKey(String groupId, int partition, String key) {
-        return KEY_ASSIGNMENTS_PREFIX + groupId + "/" + partition + "/" + key;
+    private String keyAssignmentKey(String groupId, int partition, String kind, String key) {
+        return KEY_ASSIGNMENTS_PREFIX + groupId + "/" + partition + "/" + kind + "/" + key;
     }
 
     private void emit(TopologyEvent event) {
-        sink.emitNext(event, Sinks.EmitFailureHandler.FAIL_FAST);
+        for (Consumer<TopologyEvent> listener : listeners) {
+            listener.accept(event);
+        }
     }
 }

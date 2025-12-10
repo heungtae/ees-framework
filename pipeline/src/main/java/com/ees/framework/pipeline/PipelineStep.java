@@ -2,8 +2,6 @@ package com.ees.framework.pipeline;
 
 import com.ees.framework.context.FxContext;
 import com.ees.framework.context.SupportsContext;
-import reactor.core.publisher.Mono;
-
 /**
  * Pipeline 내부에서 사용되는 변환 단계.
  *
@@ -15,5 +13,5 @@ public interface PipelineStep<I, O> extends SupportsContext {
     /**
      * 단일 컨텍스트를 입력받아 변환된 컨텍스트를 반환.
      */
-    Mono<FxContext<O>> apply(FxContext<I> context);
+    FxContext<O> apply(FxContext<I> context);
 }

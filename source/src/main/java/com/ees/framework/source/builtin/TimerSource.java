@@ -8,10 +8,9 @@ import com.ees.framework.context.FxMessage;
 import com.ees.framework.context.FxMeta;
 import com.ees.framework.source.Source;
 import org.springframework.stereotype.Component;
-import reactor.core.publisher.Flux;
-
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Iterator;
 
 /**
  * 주기적으로 틱 값을 생성하는 기본 Source 구현.
@@ -33,13 +32,31 @@ public class TimerSource implements Source<Long> {
     }
 
     @Override
-    public Flux<FxContext<Long>> read() {
-        return Flux.interval(period)
-            .map(seq -> new FxContext<>(
-                command,
-                FxHeaders.empty(),
-                new FxMessage<>("timer", seq, Instant.now(), null),
-                FxMeta.empty()
-            ));
+    public Iterable<FxContext<Long>> read() {
+        return () -> new Iterator<>() {
+            private long seq = 0;
+
+            @Override
+            public boolean hasNext() {
+                return true;
+            }
+
+            @Override
+            public FxContext<Long> next() {
+                try {
+                    Thread.sleep(period.toMillis());
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    throw new IllegalStateException("TimerSource interrupted", e);
+                }
+                return new FxContext<>(
+                    command,
+                    FxHeaders.empty(),
+                    new FxMessage<>("timer", seq++, Instant.now(), null),
+                    FxMeta.empty(),
+                    com.ees.framework.context.FxAffinity.none()
+                );
+            }
+        };
     }
 }

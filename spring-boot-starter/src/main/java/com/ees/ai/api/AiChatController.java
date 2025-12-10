@@ -4,24 +4,25 @@ import com.ees.ai.core.AiAgentService;
 import com.ees.ai.core.AiRequest;
 import com.ees.ai.core.AiResponse;
 import com.ees.ai.mcp.McpClient;
+import java.io.IOException;
+import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
-import java.util.Set;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.http.MediaType;
-import org.springframework.http.codec.ServerSentEvent;
+import org.springframework.http.ResponseEntity;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import static org.springframework.http.HttpStatus.BAD_REQUEST;
 
@@ -45,33 +46,46 @@ public class AiChatController {
     }
 
     @PostMapping("/chat")
-    public Mono<AiResponse> chat(@RequestBody AiRequest request,
-                                 @RequestHeader(name = "X-AI-Approve", defaultValue = "false") boolean approved) {
+    public AiResponse chat(@RequestBody AiRequest request,
+                           @RequestHeader(name = "X-AI-Approve", defaultValue = "false") boolean approved) {
         AiRequest normalized = normalize(request, false, approved);
         return aiAgentService.chat(normalized);
     }
 
     @PostMapping(value = "/chat/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public Flux<ServerSentEvent<AiResponse>> chatStream(@RequestBody AiRequest request,
-                                                        @RequestHeader(name = "X-AI-Approve", defaultValue = "false") boolean approved) {
+    public SseEmitter chatStream(@RequestBody AiRequest request,
+                                 @RequestHeader(name = "X-AI-Approve", defaultValue = "false") boolean approved) {
         AiRequest normalized = normalize(request, true, approved);
-        return aiAgentService.chatStream(normalized)
-            .map(response -> ServerSentEvent.builder(response)
-                .id(response.sessionId())
-                .event(response.streaming() ? "chunk" : "complete")
-                .build());
+        SseEmitter emitter = new SseEmitter(Duration.ofMinutes(5).toMillis());
+        new Thread(() -> {
+            try {
+                List<AiResponse> stream = aiAgentService.chatStream(normalized);
+                for (AiResponse response : stream) {
+                    emitter.send(SseEmitter.event()
+                        .id(response.sessionId())
+                        .name(response.streaming() ? "chunk" : "complete")
+                        .data(response));
+                }
+                emitter.complete();
+            } catch (IOException ex) {
+                emitter.completeWithError(ex);
+            } catch (Exception ex) {
+                emitter.completeWithError(ex);
+            }
+        }).start();
+        return emitter;
     }
 
     @GetMapping("/resources/nodes")
-    public Mono<String> listNodes() {
+    public ResponseEntity<String> listNodes() {
         requireMcp();
-        return mcpClient.listNodes();
+        return ResponseEntity.ok(mcpClient.listNodes());
     }
 
     @GetMapping("/resources/topology")
-    public Mono<String> topology() {
+    public ResponseEntity<String> topology() {
         requireMcp();
-        return mcpClient.describeTopology();
+        return ResponseEntity.ok(mcpClient.describeTopology());
     }
 
     private AiRequest normalize(AiRequest request, boolean forceStreaming, boolean approved) {

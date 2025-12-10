@@ -4,9 +4,9 @@ import com.ees.ai.core.AiTool;
 import com.ees.ai.core.AiToolRegistry;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ees.cluster.assignment.AssignmentService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import reactor.core.publisher.Mono;
 
 import java.util.List;
 import java.util.Map;
@@ -50,6 +50,7 @@ public class McpToolBridge {
                 mcpClient.assignKey(
                     (String) args.get("group"),
                     String.valueOf(args.getOrDefault("partition", "")),
+                    resolveKind(args),
                     (String) args.get("key"),
                     (String) args.get("appId")
                 )),
@@ -60,36 +61,41 @@ public class McpToolBridge {
         );
     }
 
-    public Mono<String> invoke(String toolName, Map<String, Object> args) {
+    public String invoke(String toolName, Map<String, Object> args) {
         log.info("Invoking MCP tool: {} args={}", toolName, args);
-        Mono<String> call = switch (toolName) {
-            case "listNodes" -> mcpClient.listNodes();
-            case "describeTopology" -> mcpClient.describeTopology();
-            case "startWorkflow" ->
-                mcpClient.startWorkflow((String) args.getOrDefault("workflowId", ""), args);
-            case "pauseWorkflow" ->
-                mcpClient.pauseWorkflow((String) args.getOrDefault("executionId", ""));
-            case "resumeWorkflow" ->
-                mcpClient.resumeWorkflow((String) args.getOrDefault("executionId", ""));
-            case "cancelWorkflow" ->
-                mcpClient.cancelWorkflow((String) args.getOrDefault("executionId", ""));
-            case "getWorkflowState" ->
-                mcpClient.getWorkflowState((String) args.getOrDefault("executionId", ""));
-            case "assignKey" -> mcpClient.assignKey(
-                (String) args.getOrDefault("group", ""),
-                String.valueOf(args.getOrDefault("partition", "")),
-                (String) args.getOrDefault("key", ""),
-                (String) args.getOrDefault("appId", "")
-            );
-            case "lock" ->
-                mcpClient.lock((String) args.getOrDefault("name", ""), asLong(args.get("ttl"), 0));
-            case "releaseLock" ->
-                mcpClient.releaseLock((String) args.getOrDefault("name", ""));
-            default -> Mono.error(new IllegalArgumentException("Unsupported MCP tool: " + toolName));
-        };
-        return call
-            .doOnSuccess(result -> auditService.record(toolName, args, result, null))
-            .doOnError(error -> auditService.record(toolName, args, null, error));
+        try {
+            String result = switch (toolName) {
+                case "listNodes" -> mcpClient.listNodes();
+                case "describeTopology" -> mcpClient.describeTopology();
+                case "startWorkflow" ->
+                    mcpClient.startWorkflow((String) args.getOrDefault("workflowId", ""), args);
+                case "pauseWorkflow" ->
+                    mcpClient.pauseWorkflow((String) args.getOrDefault("executionId", ""));
+                case "resumeWorkflow" ->
+                    mcpClient.resumeWorkflow((String) args.getOrDefault("executionId", ""));
+                case "cancelWorkflow" ->
+                    mcpClient.cancelWorkflow((String) args.getOrDefault("executionId", ""));
+                case "getWorkflowState" ->
+                    mcpClient.getWorkflowState((String) args.getOrDefault("executionId", ""));
+                case "assignKey" -> mcpClient.assignKey(
+                    (String) args.getOrDefault("group", ""),
+                    String.valueOf(args.getOrDefault("partition", "")),
+                    resolveKind(args),
+                    (String) args.getOrDefault("key", ""),
+                    (String) args.getOrDefault("appId", "")
+                );
+                case "lock" ->
+                    mcpClient.lock((String) args.getOrDefault("name", ""), asLong(args.get("ttl"), 0));
+                case "releaseLock" ->
+                    mcpClient.releaseLock((String) args.getOrDefault("name", ""));
+                default -> throw new IllegalArgumentException("Unsupported MCP tool: " + toolName);
+            };
+            auditService.record(toolName, args, result, null);
+            return result;
+        } catch (Exception ex) {
+            auditService.record(toolName, args, null, ex);
+            throw ex;
+        }
     }
 
     private long asLong(Object value, long defaultValue) {
@@ -110,7 +116,7 @@ public class McpToolBridge {
         String name,
         String description,
         String inputSchema,
-        Function<Map<String, Object>, Mono<String>> executor
+        Function<Map<String, Object>, String> executor
     ) {
         org.springframework.ai.tool.definition.ToolDefinition definition =
             org.springframework.ai.tool.definition.DefaultToolDefinition.builder()
@@ -128,11 +134,14 @@ public class McpToolBridge {
             @Override
             public String call(String request) {
                 Map<String, Object> args = parseArgs(request);
-                return executor.apply(args)
-                    .doOnSuccess(result -> auditService.record(definition.name(), args, result, null))
-                    .doOnError(error -> auditService.record(definition.name(), args, null, error))
-                    .blockOptional()
-                    .orElse("");
+                try {
+                    String result = executor.apply(args);
+                    auditService.record(definition.name(), args, result, null);
+                    return result;
+                } catch (Exception ex) {
+                    auditService.record(definition.name(), args, null, ex);
+                    throw ex;
+                }
             }
         };
     }
@@ -168,8 +177,16 @@ public class McpToolBridge {
 
     private String assignKeySchema() {
         return """
-            {"type":"object","properties":{"group":{"type":"string"},"partition":{"type":"string"},"key":{"type":"string"},"appId":{"type":"string"}},"required":["group","key","appId"]}
+            {"type":"object","properties":{"group":{"type":"string"},"partition":{"type":"string"},"kind":{"type":"string"},"key":{"type":"string"},"appId":{"type":"string"}},"required":["group","kind","key","appId"]}
             """;
+    }
+
+    private String resolveKind(Map<String, Object> args) {
+        Object provided = args.get("kind");
+        if (provided instanceof String text && !text.isBlank()) {
+            return text;
+        }
+        return AssignmentService.DEFAULT_AFFINITY_KIND;
     }
 
     private String lockSchema() {

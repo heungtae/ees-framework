@@ -1,7 +1,5 @@
 package com.ees.ai.mcp;
 
-import reactor.core.publisher.Mono;
-
 import java.util.Map;
 
 /**
@@ -11,52 +9,52 @@ import java.util.Map;
 public class DefaultMcpClient implements McpClient {
 
     @Override
-    public Mono<String> listNodes() {
-        return Mono.just("{\"status\":\"not-implemented\",\"action\":\"listNodes\"}");
+    public String listNodes() {
+        return "{\"status\":\"not-implemented\",\"action\":\"listNodes\"}";
     }
 
     @Override
-    public Mono<String> describeTopology() {
-        return Mono.just("{\"status\":\"not-implemented\",\"action\":\"describeTopology\"}");
+    public String describeTopology() {
+        return "{\"status\":\"not-implemented\",\"action\":\"describeTopology\"}";
     }
 
     @Override
-    public Mono<String> startWorkflow(String workflowId, Map<String, Object> params) {
-        return Mono.just("{\"status\":\"not-implemented\",\"action\":\"startWorkflow\",\"workflowId\":\"" + workflowId + "\"}");
+    public String startWorkflow(String workflowId, Map<String, Object> params) {
+        return "{\"status\":\"not-implemented\",\"action\":\"startWorkflow\",\"workflowId\":\"" + workflowId + "\"}";
     }
 
     @Override
-    public Mono<String> pauseWorkflow(String executionId) {
-        return Mono.just("{\"status\":\"not-implemented\",\"action\":\"pauseWorkflow\",\"executionId\":\"" + executionId + "\"}");
+    public String pauseWorkflow(String executionId) {
+        return "{\"status\":\"not-implemented\",\"action\":\"pauseWorkflow\",\"executionId\":\"" + executionId + "\"}";
     }
 
     @Override
-    public Mono<String> resumeWorkflow(String executionId) {
-        return Mono.just("{\"status\":\"not-implemented\",\"action\":\"resumeWorkflow\",\"executionId\":\"" + executionId + "\"}");
+    public String resumeWorkflow(String executionId) {
+        return "{\"status\":\"not-implemented\",\"action\":\"resumeWorkflow\",\"executionId\":\"" + executionId + "\"}";
     }
 
     @Override
-    public Mono<String> cancelWorkflow(String executionId) {
-        return Mono.just("{\"status\":\"not-implemented\",\"action\":\"cancelWorkflow\",\"executionId\":\"" + executionId + "\"}");
+    public String cancelWorkflow(String executionId) {
+        return "{\"status\":\"not-implemented\",\"action\":\"cancelWorkflow\",\"executionId\":\"" + executionId + "\"}";
     }
 
     @Override
-    public Mono<String> getWorkflowState(String executionId) {
-        return Mono.just("{\"status\":\"not-implemented\",\"action\":\"getWorkflowState\",\"executionId\":\"" + executionId + "\"}");
+    public String getWorkflowState(String executionId) {
+        return "{\"status\":\"not-implemented\",\"action\":\"getWorkflowState\",\"executionId\":\"" + executionId + "\"}";
     }
 
     @Override
-    public Mono<String> assignKey(String group, String partition, String key, String appId) {
-        return Mono.just("{\"status\":\"not-implemented\",\"action\":\"assignKey\",\"key\":\"" + key + "\"}");
+    public String assignKey(String group, String partition, String kind, String key, String appId) {
+        return "{\"status\":\"not-implemented\",\"action\":\"assignKey\",\"kind\":\"" + kind + "\",\"key\":\"" + key + "\"}";
     }
 
     @Override
-    public Mono<String> lock(String name, long ttlSeconds) {
-        return Mono.just("{\"status\":\"not-implemented\",\"action\":\"lock\",\"name\":\"" + name + "\"}");
+    public String lock(String name, long ttlSeconds) {
+        return "{\"status\":\"not-implemented\",\"action\":\"lock\",\"name\":\"" + name + "\"}";
     }
 
     @Override
-    public Mono<String> releaseLock(String name) {
-        return Mono.just("{\"status\":\"not-implemented\",\"action\":\"releaseLock\",\"name\":\"" + name + "\"}");
+    public String releaseLock(String name) {
+        return "{\"status\":\"not-implemented\",\"action\":\"releaseLock\",\"name\":\"" + name + "\"}";
     }
 }

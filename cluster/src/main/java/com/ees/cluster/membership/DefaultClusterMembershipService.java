@@ -6,9 +6,6 @@ import com.ees.cluster.model.ClusterNodeStatus;
 import com.ees.cluster.model.MembershipEvent;
 import com.ees.cluster.model.MembershipEventType;
 import com.ees.cluster.state.ClusterStateRepository;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
-import reactor.core.publisher.Sinks;
 
 import java.time.Clock;
 import java.time.Duration;
@@ -17,6 +14,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.function.Consumer;
 
 public class DefaultClusterMembershipService implements ClusterMembershipService {
 
@@ -24,8 +23,7 @@ public class DefaultClusterMembershipService implements ClusterMembershipService
 
     private final ClusterStateRepository repository;
     private final ClusterMembershipProperties properties;
-    private final Sinks.Many<MembershipEvent> eventSink =
-            Sinks.many().multicast().onBackpressureBuffer();
+    private final CopyOnWriteArrayList<Consumer<MembershipEvent>> listeners = new CopyOnWriteArrayList<>();
     private final Clock clock;
 
     public DefaultClusterMembershipService(ClusterStateRepository repository,
@@ -42,83 +40,82 @@ public class DefaultClusterMembershipService implements ClusterMembershipService
     }
 
     @Override
-    public Mono<ClusterNodeRecord> join(ClusterNode node) {
+    public ClusterNodeRecord join(ClusterNode node) {
         Objects.requireNonNull(node, "node must not be null");
         Instant now = clock.instant();
         ClusterNodeRecord record = new ClusterNodeRecord(node, ClusterNodeStatus.UP, now, now);
-        return repository.put(nodeKey(node.nodeId()), record, ttl())
-                .doOnSuccess(ignored -> emitEvent(new MembershipEvent(MembershipEventType.JOINED, record, now)))
-                .thenReturn(record);
+        repository.put(nodeKey(node.nodeId()), record, ttl());
+        emitEvent(new MembershipEvent(MembershipEventType.JOINED, record, now));
+        return record;
     }
 
     @Override
-    public Mono<ClusterNodeRecord> heartbeat(String nodeId) {
+    public ClusterNodeRecord heartbeat(String nodeId) {
         Objects.requireNonNull(nodeId, "nodeId must not be null");
         Instant now = clock.instant();
-        return repository.get(nodeKey(nodeId), ClusterNodeRecord.class)
-                .flatMap(optional -> optional
-                        .map(record -> updateHeartbeat(record, now))
-                        .orElseGet(() -> Mono.error(new IllegalStateException("Node not found: " + nodeId))));
+        Optional<ClusterNodeRecord> optional = repository.get(nodeKey(nodeId), ClusterNodeRecord.class);
+        if (optional.isEmpty()) {
+            throw new IllegalStateException("Node not found: " + nodeId);
+        }
+        return updateHeartbeat(optional.get(), now);
     }
 
-    private Mono<ClusterNodeRecord> updateHeartbeat(ClusterNodeRecord record, Instant heartbeatTime) {
+    private ClusterNodeRecord updateHeartbeat(ClusterNodeRecord record, Instant heartbeatTime) {
         ClusterNodeStatus newStatus = record.status() == ClusterNodeStatus.LEFT
                 ? ClusterNodeStatus.LEFT
                 : ClusterNodeStatus.UP;
         ClusterNodeRecord updated = new ClusterNodeRecord(record.node(), newStatus, record.joinedAt(), heartbeatTime);
-        return repository.put(nodeKey(record.node().nodeId()), updated, ttl())
-                .doOnSuccess(ignored -> emitEvent(new MembershipEvent(MembershipEventType.HEARTBEAT, updated, heartbeatTime)))
-                .thenReturn(updated);
+        repository.put(nodeKey(record.node().nodeId()), updated, ttl());
+        emitEvent(new MembershipEvent(MembershipEventType.HEARTBEAT, updated, heartbeatTime));
+        return updated;
     }
 
     @Override
-    public Mono<Void> leave(String nodeId) {
+    public void leave(String nodeId) {
         Objects.requireNonNull(nodeId, "nodeId must not be null");
         Instant now = clock.instant();
-        return repository.get(nodeKey(nodeId), ClusterNodeRecord.class)
-                .flatMap(optional -> optional.map(record -> {
-                    ClusterNodeRecord updated = record.withStatus(ClusterNodeStatus.LEFT);
-                    return repository.put(nodeKey(nodeId), updated, properties.heartbeatTimeout())
-                            .doOnSuccess(ignored -> emitEvent(new MembershipEvent(MembershipEventType.LEFT, updated, now)))
-                            .then();
-                }).orElseGet(Mono::empty));
+        Optional<ClusterNodeRecord> optional = repository.get(nodeKey(nodeId), ClusterNodeRecord.class);
+        optional.ifPresent(record -> {
+            ClusterNodeRecord updated = record.withStatus(ClusterNodeStatus.LEFT);
+            repository.put(nodeKey(nodeId), updated, properties.heartbeatTimeout());
+            emitEvent(new MembershipEvent(MembershipEventType.LEFT, updated, now));
+        });
     }
 
     @Override
-    public Mono<Void> remove(String nodeId) {
+    public void remove(String nodeId) {
         Objects.requireNonNull(nodeId, "nodeId must not be null");
-        return repository.get(nodeKey(nodeId), ClusterNodeRecord.class)
-                .flatMap(optional -> repository.delete(nodeKey(nodeId))
-                        .doOnSuccess(ignored -> optional.ifPresent(record ->
-                                emitEvent(new MembershipEvent(MembershipEventType.REMOVED, record, clock.instant()))))
-                        .then());
+        Optional<ClusterNodeRecord> optional = repository.get(nodeKey(nodeId), ClusterNodeRecord.class);
+        boolean deleted = repository.delete(nodeKey(nodeId));
+        if (deleted) {
+            optional.ifPresent(record -> emitEvent(new MembershipEvent(MembershipEventType.REMOVED, record, clock.instant())));
+        }
     }
 
     @Override
-    public Mono<Optional<ClusterNodeRecord>> findNode(String nodeId) {
+    public Optional<ClusterNodeRecord> findNode(String nodeId) {
         Objects.requireNonNull(nodeId, "nodeId must not be null");
         return repository.get(nodeKey(nodeId), ClusterNodeRecord.class);
     }
 
     @Override
-    public Mono<Map<String, ClusterNodeRecord>> view() {
+    public Map<String, ClusterNodeRecord> view() {
         Map<String, ClusterNodeRecord> view = new ConcurrentHashMap<>();
-        return repository.scan(NODES_PREFIX, ClusterNodeRecord.class)
-                .doOnNext(record -> view.put(record.node().nodeId(), record))
-                .then(Mono.just(view));
+        repository.scan(NODES_PREFIX, ClusterNodeRecord.class)
+            .forEach(record -> view.put(record.node().nodeId(), record));
+        return view;
     }
 
     @Override
-    public Mono<Void> detectTimeouts() {
+    public void detectTimeouts() {
         Instant now = clock.instant();
         Duration timeout = properties.heartbeatTimeout();
         Duration downThreshold = timeout.multipliedBy(2);
-        return repository.scan(NODES_PREFIX, ClusterNodeRecord.class)
-                .flatMap(record -> evaluateRecord(record, now, timeout, downThreshold))
-                .then();
+        repository.scan(NODES_PREFIX, ClusterNodeRecord.class)
+            .forEach(record -> evaluateRecord(record, now, timeout, downThreshold));
     }
 
-    private Mono<Void> evaluateRecord(ClusterNodeRecord record, Instant now, Duration suspectAfter, Duration downAfter) {
+    private void evaluateRecord(ClusterNodeRecord record, Instant now, Duration suspectAfter, Duration downAfter) {
         Instant last = record.lastHeartbeat();
         ClusterNodeStatus nextStatus = null;
         Instant suspectAt = last.plus(suspectAfter);
@@ -134,21 +131,20 @@ public class DefaultClusterMembershipService implements ClusterMembershipService
         }
 
         if (nextStatus == null) {
-            return Mono.empty();
+            return;
         }
 
         ClusterNodeRecord updated = record.withStatus(nextStatus);
         MembershipEventType eventType = nextStatus == ClusterNodeStatus.SUSPECT
                 ? MembershipEventType.SUSPECTED
                 : MembershipEventType.DOWN;
-        return repository.put(nodeKey(record.node().nodeId()), updated, ttl())
-                .doOnSuccess(ignored -> emitEvent(new MembershipEvent(eventType, updated, now)))
-                .then();
+        repository.put(nodeKey(record.node().nodeId()), updated, ttl());
+        emitEvent(new MembershipEvent(eventType, updated, now));
     }
 
     @Override
-    public Flux<MembershipEvent> events() {
-        return eventSink.asFlux();
+    public void events(Consumer<MembershipEvent> consumer) {
+        listeners.add(consumer);
     }
 
     private Duration ttl() {
@@ -160,6 +156,8 @@ public class DefaultClusterMembershipService implements ClusterMembershipService
     }
 
     private void emitEvent(MembershipEvent event) {
-        eventSink.emitNext(event, Sinks.EmitFailureHandler.FAIL_FAST);
+        for (Consumer<MembershipEvent> listener : listeners) {
+            listener.accept(event);
+        }
     }
 }

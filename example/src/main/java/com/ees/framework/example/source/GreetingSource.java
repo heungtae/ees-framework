@@ -8,7 +8,6 @@ import com.ees.framework.context.FxMessage;
 import com.ees.framework.context.FxMeta;
 import com.ees.framework.source.Source;
 import org.springframework.stereotype.Component;
-import reactor.core.publisher.Flux;
 
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -38,13 +37,14 @@ public class GreetingSource implements Source<String> {
     }
 
     @Override
-    public Flux<FxContext<String>> read() {
-        return Flux.fromIterable(greetings)
+    public Iterable<FxContext<String>> read() {
+        return greetings.stream()
             .map(message -> {
                 FxHeaders headers = FxHeaders.empty()
                     .with("greeting-sequence", String.valueOf(sequence.incrementAndGet()));
                 FxMessage<String> fxMessage = FxMessage.now("example-greeting", message);
-                return new FxContext<>(command, headers, fxMessage, FxMeta.empty());
-            });
+                return new FxContext<>(command, headers, fxMessage, FxMeta.empty(), com.ees.framework.context.FxAffinity.none());
+            })
+            .toList();
     }
 }

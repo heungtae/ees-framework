@@ -3,27 +3,25 @@ package com.ees.cluster.membership;
 import com.ees.cluster.model.ClusterNode;
 import com.ees.cluster.model.ClusterNodeRecord;
 import com.ees.cluster.model.MembershipEvent;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
-
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Consumer;
 
 public interface ClusterMembershipService {
 
-    Mono<ClusterNodeRecord> join(ClusterNode node);
+    ClusterNodeRecord join(ClusterNode node);
 
-    Mono<ClusterNodeRecord> heartbeat(String nodeId);
+    ClusterNodeRecord heartbeat(String nodeId);
 
-    Mono<Void> leave(String nodeId);
+    void leave(String nodeId);
 
-    Mono<Void> remove(String nodeId);
+    void remove(String nodeId);
 
-    Mono<Optional<ClusterNodeRecord>> findNode(String nodeId);
+    Optional<ClusterNodeRecord> findNode(String nodeId);
 
-    Mono<Map<String, ClusterNodeRecord>> view();
+    Map<String, ClusterNodeRecord> view();
 
-    Mono<Void> detectTimeouts();
+    void detectTimeouts();
 
-    Flux<MembershipEvent> events();
+    void events(Consumer<MembershipEvent> consumer);
 }

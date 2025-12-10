@@ -1,8 +1,5 @@
 package com.ees.framework.metadatastore;
 
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
-
 /**
  * Framework 전체에서 사용하는 메타데이터 저장소 인터페이스.
  *
@@ -12,9 +9,9 @@ import reactor.core.publisher.Mono;
  */
 public interface MetadataStore {
 
-    Mono<Void> save(String key, byte[] value);
+    void save(String key, byte[] value);
 
-    Mono<byte[]> find(String key);
+    byte[] find(String key);
 
-    Flux<byte[]> findAll();
+    java.util.List<byte[]> findAll();
 }

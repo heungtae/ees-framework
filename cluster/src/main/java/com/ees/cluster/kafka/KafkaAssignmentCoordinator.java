@@ -3,13 +3,13 @@ package com.ees.cluster.kafka;
 import com.ees.cluster.assignment.AssignmentService;
 import com.ees.cluster.model.Assignment;
 import com.ees.cluster.model.WorkflowHandoff;
-import reactor.core.publisher.Mono;
 
 import java.time.Clock;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Objects;
+import java.util.Map;
 
 /**
  * Lightweight helper to translate Kafka consumer callbacks into AssignmentService updates.
@@ -30,21 +30,27 @@ public class KafkaAssignmentCoordinator {
         this.clock = Objects.requireNonNull(clock, "clock must not be null");
     }
 
-    public Mono<Void> onPartitionsAssigned(String groupId, String nodeId, Collection<Integer> partitions) {
+    public void onPartitionsAssigned(String groupId, String nodeId, Collection<Integer> partitions) {
+        onPartitionsAssigned(groupId, nodeId, partitions, Map.of());
+    }
+
+    public void onPartitionsAssigned(String groupId, String nodeId, Collection<Integer> partitions,
+                                     Map<String, java.util.List<String>> affinities) {
         Objects.requireNonNull(groupId, "groupId must not be null");
         Objects.requireNonNull(nodeId, "nodeId must not be null");
         Objects.requireNonNull(partitions, "partitions must not be null");
+        Objects.requireNonNull(affinities, "affinities must not be null");
         Instant now = clock.instant();
-        return assignmentService.applyAssignments(groupId,
+        assignmentService.applyAssignments(groupId,
                 partitions.stream()
-                        .map(partition -> new Assignment(groupId, partition, nodeId, Collections.emptyList(),
+                        .map(partition -> new Assignment(groupId, partition, nodeId, affinities.isEmpty() ? Collections.emptyMap() : affinities,
                                 (WorkflowHandoff) null, 0L, now))
                         .toList());
     }
 
-    public Mono<Void> onPartitionsRevoked(String groupId, Collection<Integer> partitions, String reason) {
+    public void onPartitionsRevoked(String groupId, Collection<Integer> partitions, String reason) {
         Objects.requireNonNull(groupId, "groupId must not be null");
         Objects.requireNonNull(partitions, "partitions must not be null");
-        return assignmentService.revokeAssignments(groupId, partitions, reason);
+        assignmentService.revokeAssignments(groupId, partitions, reason);
     }
 }

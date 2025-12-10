@@ -1,8 +1,11 @@
 package com.ees.framework.workflow.engine;
 
+import com.ees.framework.context.FxAffinity;
 import com.ees.framework.context.FxCommand;
 import com.ees.framework.context.FxContext;
+import com.ees.framework.context.FxHeaders;
 import com.ees.framework.context.FxMessage;
+import com.ees.framework.context.FxMeta;
 import com.ees.framework.workflow.dsl.WorkflowDsl;
 import com.ees.framework.workflow.dsl.WorkflowGraphDsl;
 import com.ees.framework.workflow.model.WorkflowDefinition;
@@ -11,8 +14,6 @@ import com.ees.framework.workflow.model.WorkflowNodeDefinition;
 import com.ees.framework.workflow.util.LinearToGraphConverter;
 import com.ees.framework.workflow.util.WorkflowGraphValidator;
 import org.junit.jupiter.api.Test;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
 
 import java.util.List;
 import java.util.Map;
@@ -49,7 +50,7 @@ class WorkflowRuntimeTest {
             List.of(graphOnly),
             new LinearToGraphConverter(),
             new WorkflowGraphValidator(),
-            new ReactorWorkflowEngine(),
+            new BlockingWorkflowEngine(),
             new StaticResolver(Map.of(
                 "shared-source", source,
                 "sink-a", sinkA,
@@ -62,14 +63,14 @@ class WorkflowRuntimeTest {
             .extracting(Workflow::getName)
             .containsExactly("alpha", "beta", "graph-only");
 
-        runtime.startAll().block();
+        runtime.startAll();
 
         assertThat(source.awaitStarts()).isTrue();
         assertThat(sinkA.awaitWrites()).isTrue();
         assertThat(sinkB.awaitWrites()).isTrue();
         assertThat(sinkC.awaitWrites()).isTrue();
 
-        runtime.stopAll().block();
+        runtime.stopAll();
     }
 
     private static class StaticResolver implements WorkflowNodeResolver {
@@ -99,10 +100,16 @@ class WorkflowRuntimeTest {
         }
 
         @Override
-        public Flux<FxContext<String>> read() {
+        public Iterable<FxContext<String>> read() {
             latch.countDown();
             FxMessage<String> message = FxMessage.now("shared-source", "payload");
-            return Flux.just(FxContext.of(message, FxCommand.of("ingest")));
+            return List.of(new FxContext<>(
+                FxCommand.of("ingest"),
+                FxHeaders.empty(),
+                message,
+                FxMeta.empty(),
+                FxAffinity.of("equipmentId", "eq-1")
+            ));
         }
 
         boolean awaitStarts() throws InterruptedException {
@@ -115,9 +122,8 @@ class WorkflowRuntimeTest {
         private final CountDownLatch latch = new CountDownLatch(1);
 
         @Override
-        public Mono<Void> write(FxContext<String> context) {
+        public void write(FxContext<String> context) {
             latch.countDown();
-            return Mono.empty();
         }
 
         boolean awaitWrites() throws InterruptedException {

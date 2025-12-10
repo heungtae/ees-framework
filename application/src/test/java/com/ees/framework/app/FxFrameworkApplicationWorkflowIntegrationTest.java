@@ -24,8 +24,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.boot.test.context.TestConfiguration;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
 
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -51,14 +49,14 @@ class FxFrameworkApplicationWorkflowIntegrationTest {
 
     @AfterEach
     void tearDown() {
-        workflowRuntime.stopAll().block();
+        workflowRuntime.stopAll();
     }
 
     @Test
     void runsWorkflowEndToEndThroughSpringApplication() throws Exception {
         assertThat(workflowRuntime.getWorkflow("spring-boot-workflow")).isPresent();
 
-        workflowRuntime.startAll().block();
+        workflowRuntime.startAll();
 
         assertThat(recordingSink.awaitWrite()).isTrue();
         FxContext<String> captured = recordingSink.getReceived();
@@ -92,11 +90,11 @@ class FxFrameworkApplicationWorkflowIntegrationTest {
     }
 
     @FxSource(type = "spring-source")
-    static class SampleSource implements Source<String> {
+   static class SampleSource implements Source<String> {
         @Override
-        public Flux<FxContext<String>> read() {
+        public Iterable<FxContext<String>> read() {
             FxMessage<String> message = FxMessage.now("spring-source", "hello");
-            return Flux.just(FxContext.of(message, FxCommand.of("ingest")));
+            return java.util.List.of(FxContext.of(message, FxCommand.of("ingest")));
         }
     }
 
@@ -106,9 +104,9 @@ class FxFrameworkApplicationWorkflowIntegrationTest {
         private final AtomicInteger invocations = new AtomicInteger();
 
         @Override
-        public Mono<FxContext<String>> handle(FxContext<String> context) {
+        public FxContext<String> handle(FxContext<String> context) {
             invocations.incrementAndGet();
-            return Mono.just(context);
+            return context;
         }
 
         int invocations() {
@@ -119,7 +117,7 @@ class FxFrameworkApplicationWorkflowIntegrationTest {
     @FxPipelineStep("uppercase-step")
     static class UppercasePipelineStep implements PipelineStep<String, String> {
         @Override
-        public Mono<FxContext<String>> apply(FxContext<String> context) {
+        public FxContext<String> apply(FxContext<String> context) {
             FxMessage<String> uppercased = new FxMessage<>(
                 context.message().sourceType(),
                 context.message().payload().toUpperCase(),
@@ -130,9 +128,10 @@ class FxFrameworkApplicationWorkflowIntegrationTest {
                 context.command(),
                 context.headers(),
                 uppercased,
-                context.meta()
+                context.meta(),
+                context.affinity()
             );
-            return Mono.just(updated);
+            return updated;
         }
     }
 
@@ -142,7 +141,7 @@ class FxFrameworkApplicationWorkflowIntegrationTest {
         private final AtomicInteger invocations = new AtomicInteger();
 
         @Override
-        public Mono<FxContext<String>> handle(FxContext<String> context) {
+        public FxContext<String> handle(FxContext<String> context) {
             invocations.incrementAndGet();
             FxMessage<String> decorated = new FxMessage<>(
                 context.message().sourceType(),
@@ -154,9 +153,10 @@ class FxFrameworkApplicationWorkflowIntegrationTest {
                 context.command(),
                 context.headers(),
                 decorated,
-                context.meta()
+                context.meta(),
+                context.affinity()
             );
-            return Mono.just(updated);
+            return updated;
         }
 
         int invocations() {
@@ -171,10 +171,9 @@ class FxFrameworkApplicationWorkflowIntegrationTest {
         private FxContext<String> received;
 
         @Override
-        public Mono<Void> write(FxContext<String> context) {
+        public void write(FxContext<String> context) {
             this.received = context;
             latch.countDown();
-            return Mono.empty();
         }
 
         boolean awaitWrite() throws InterruptedException {

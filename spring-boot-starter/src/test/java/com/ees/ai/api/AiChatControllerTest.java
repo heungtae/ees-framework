@@ -10,92 +10,103 @@ import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.http.MediaType;
-import org.springframework.test.web.reactive.server.WebTestClient;
-import reactor.core.publisher.Mono;
+import org.springframework.mock.web.MockHttpServletResponse;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 class AiChatControllerTest {
 
     @Test
     void shouldRejectDangerousToolsWithoutApproval() {
-        WebTestClient client = WebTestClient.bindToController(new AiChatController(new StubAiService(), new NullProvider<>()))
+        MockMvc mockMvc = MockMvcBuilders.standaloneSetup(new AiChatController(new StubAiService(), new NullProvider<>()))
             .build();
 
         AiRequest request = new AiRequest("s1", "u1", List.of(new AiMessage("user", "hi")), List.of("cancelWorkflow"), false);
 
-        client.post().uri("/api/ai/chat")
-            .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(request)
-            .exchange()
-            .expectStatus().isBadRequest();
+        try {
+            MockHttpServletResponse response = mockMvc.perform(
+                    org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/ai/chat")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(request))
+                ).andReturn().getResponse();
+            Assertions.assertThat(response.getStatus()).isEqualTo(400);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Test
     void shouldExposeResourceEndpoints() {
         McpClient mcpClient = new McpClient() {
             @Override
-            public Mono<String> listNodes() {
-                return Mono.just("nodes");
+            public String listNodes() {
+                return "nodes";
             }
 
             @Override
-            public Mono<String> describeTopology() {
-                return Mono.just("topology");
+            public String describeTopology() {
+                return "topology";
             }
 
             @Override
-            public Mono<String> startWorkflow(String workflowId, java.util.Map<String, Object> params) {
-                return Mono.empty();
+            public String startWorkflow(String workflowId, java.util.Map<String, Object> params) {
+                return "";
             }
 
             @Override
-            public Mono<String> pauseWorkflow(String executionId) {
-                return Mono.empty();
+            public String pauseWorkflow(String executionId) {
+                return "";
             }
 
             @Override
-            public Mono<String> resumeWorkflow(String executionId) {
-                return Mono.empty();
+            public String resumeWorkflow(String executionId) {
+                return "";
             }
 
             @Override
-            public Mono<String> cancelWorkflow(String executionId) {
-                return Mono.empty();
+            public String cancelWorkflow(String executionId) {
+                return "";
             }
 
             @Override
-            public Mono<String> getWorkflowState(String executionId) {
-                return Mono.empty();
+            public String getWorkflowState(String executionId) {
+                return "";
             }
 
             @Override
-            public Mono<String> assignKey(String group, String partition, String key, String appId) {
-                return Mono.empty();
+            public String assignKey(String group, String partition, String kind, String key, String appId) {
+                return "";
             }
 
             @Override
-            public Mono<String> lock(String name, long ttlSeconds) {
-                return Mono.empty();
+            public String lock(String name, long ttlSeconds) {
+                return "";
             }
 
             @Override
-            public Mono<String> releaseLock(String name) {
-                return Mono.empty();
+            public String releaseLock(String name) {
+                return "";
             }
         };
 
-        WebTestClient client = WebTestClient.bindToController(new AiChatController(new StubAiService(), new FixedProvider<>(mcpClient)))
+        MockMvc mockMvc = MockMvcBuilders.standaloneSetup(new AiChatController(new StubAiService(), new FixedProvider<>(mcpClient)))
             .build();
 
-        client.get().uri("/api/ai/resources/nodes")
-            .exchange()
-            .expectStatus().is2xxSuccessful()
-            .expectBody(String.class).isEqualTo("nodes");
+        try {
+            MockHttpServletResponse response = mockMvc.perform(
+                    org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/api/ai/resources/nodes")
+                ).andReturn().getResponse();
+            org.assertj.core.api.Assertions.assertThat(response.getStatus()).isEqualTo(200);
+            org.assertj.core.api.Assertions.assertThat(response.getContentAsString()).isEqualTo("nodes");
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private static class StubAiService implements AiAgentService {
         @Override
-        public Mono<AiResponse> chat(AiRequest request) {
-            return Mono.just(new AiResponse(request.sessionId(), "ok", false));
+        public AiResponse chat(AiRequest request) {
+            return new AiResponse(request.sessionId(), "ok", false);
         }
     }
 

@@ -2,8 +2,6 @@ package com.ees.framework.sink;
 
 import com.ees.framework.context.FxContext;
 import com.ees.framework.context.SupportsContext;
-import reactor.core.publisher.Mono;
-
 /**
  * 출력(Sink) 추상화.
  *
@@ -14,5 +12,5 @@ public interface Sink<T> extends SupportsContext {
     /**
      * 컨텍스트를 받아서 저장/전송을 수행.
      */
-    Mono<Void> write(FxContext<T> context);
+    void write(FxContext<T> context);
 }

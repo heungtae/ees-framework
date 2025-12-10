@@ -21,11 +21,6 @@
             <artifactId>ees-core</artifactId>
         </dependency>
 
-        <dependency>
-            <groupId>io.projectreactor</groupId>
-            <artifactId>reactor-core</artifactId>
-            <version>${reactor.version}</version>
-        </dependency>
     </dependencies>
 
 </project>

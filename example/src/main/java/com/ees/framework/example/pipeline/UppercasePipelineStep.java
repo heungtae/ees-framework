@@ -4,7 +4,6 @@ import com.ees.framework.annotations.FxPipelineStep;
 import com.ees.framework.context.FxContext;
 import com.ees.framework.context.FxMessage;
 import com.ees.framework.pipeline.PipelineStep;
-import reactor.core.publisher.Mono;
 
 import java.util.Locale;
 
@@ -15,7 +14,7 @@ import java.util.Locale;
 public class UppercasePipelineStep implements PipelineStep<String, String> {
 
     @Override
-    public Mono<FxContext<String>> apply(FxContext<String> context) {
+    public FxContext<String> apply(FxContext<String> context) {
         String uppercase = context.message().payload().toUpperCase(Locale.ROOT);
         FxMessage<String> updated = new FxMessage<>(
             context.message().sourceType(),
@@ -23,6 +22,6 @@ public class UppercasePipelineStep implements PipelineStep<String, String> {
             context.message().timestamp(),
             context.message().key()
         );
-        return Mono.just(new FxContext<>(context.command(), context.headers(), updated, context.meta()));
+        return new FxContext<>(context.command(), context.headers(), updated, context.meta(), context.affinity());
     }
 }

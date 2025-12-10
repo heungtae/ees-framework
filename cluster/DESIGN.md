@@ -42,7 +42,7 @@
 - `cluster:nodes/{nodeId}`: {status, lastHeartbeat, roles, zone, version, metadata}, TTL = heartbeatTimeout * 2.
 - Kafka 모드: Kafka가 조정하는 워크로드는 `cluster:leader`를 사용하지 않음(비-Kafka 작업만 선택적). 할당은 컨슈머 뷰에서 파생.
 - Raft 모드: `cluster:raft/groups/{app}` -> {groupId, peers, equipmentGroup}, `cluster:raft/metadata/{app}` 부트스트랩 정보. 리더/락/할당 상태는 Raft 로그에 지속.
-- 공통(모드 무관): `cluster:locks/{name}`: {ownerNodeId, leaseUntil, meta}(또는 Raft 백엔드), `cluster:assignments/{group}`: {partition -> {ownerNodeId, equipmentIds, workflowHandoff, lastOffset, version}}.
+- 공통(모드 무관): `cluster:locks/{name}`: {ownerNodeId, leaseUntil, meta}(또는 Raft 백엔드), `cluster:assignments/{group}`: {partition -> {ownerNodeId, affinities(kind->values, 기본 equipmentId), workflowHandoff, lastOffset, version}}.
 - Kafka 키 할당: `cluster:assignments/{group}/{partition}/keys/{key}`: {appId, assignedBy(auto|manual), updatedAt, version}. 키는 해시/UUID 등으로 정규화하고, 파티션 리밸런스 시 새 오너가 동일 매핑을 이어받는다.
 - Raft 조인 요청: `cluster:raft/join-requests/{app}/{nodeId}`: {requestedAt, zone, roles, endpoint, metadata}, TTL = joinTimeout. 리더가 승인/거절 후 삭제.
 
@@ -92,29 +92,29 @@
 ## Kafka 모드: 파티션/설비 매핑 & 워크플로 핸드오프
 - 목표: 동일 컨슈머 그룹 내 리밸런스 시에도 파티션이 담당하던 설비와 진행 중 워크플로 상태를 새 오너가 이어받아 중단 없이 처리.
 - 데이터/키:
-  - `cluster:assignments/{group}/{partition}`: {ownerNodeId, equipmentIds[], workflowHandoff(업스트림 체크포인트, 워크플로 단계 상태, lastProcessedAt), lastOffset, version, updatedAt}.
-  - `TopologyEvent`에 `equipmentIds`와 `workflowHandoff`를 포함해 소비 측 파이프라인이 초기화에 활용.
+  - `cluster:assignments/{group}/{partition}`: {ownerNodeId, affinities(kind->values, 기본 equipmentId)[], workflowHandoff(업스트림 체크포인트, 워크플로 단계 상태, lastProcessedAt), lastOffset, version, updatedAt}.
+  - `TopologyEvent`에 `affinities`와 `workflowHandoff`를 포함해 소비 측 파이프라인이 초기화에 활용.
 - 흐름:
   1) `assigned(partitions)` 수신 시: 각 파티션에 대한 `workflowHandoff` 조회 → 파이프라인 초기화 시 전달 → 오프셋 seek 후 처리 시작.
   2) `revoked(partitions)` 수신 시: 파티션별 최신 워크플로 체크포인트/메타데이터를 수집하고 `workflowHandoff`로 기록 후 커밋 → Kafka가 재할당.
   3) 장애로 종료되면 마지막 커밋 오프셋과 직전 핸드오프 데이터로 복구; 핸드오프 TTL은 Kafka retention보다 길게 설정.
 - 고려사항:
   - 핸드오프 기록 실패 시 재시도하며, 실패 누적 시 빠른 알림 후 워크플로 측이 별도 복구 경로를 사용하게 한다.
-  - `equipmentIds`가 많은 경우 압축 또는 외부 스냅샷 경로를 저장(메타스토어에는 포인터).
+  - affinity values가 많은 경우 압축 또는 외부 스냅샷 경로를 저장(메타스토어에는 포인터).
   - 동일 파티션 내 순서 보장을 위해 핸드오프는 revoke 후 seek 지점 이전 오프셋 기준으로 기록.
 
 ## Kafka 모드: 애플리케이션/키 할당 모델
 - 목표: 모든 애플리케이션이 자신에게 assigned된 파티션을 active로 처리하면서, 다른 애플리케이션의 standby가 되어 장애·종료 시 파티션을 인수한다. 파티션 수와 동일한 애플리케이션이 존재하면 모두 active가 되며, 애플리케이션이 내려가면 컨슈머 리밸런스로 남은 애플리케이션이 파티션을 assigned 받아 즉시 처리한다.
 - 키 할당 저장소: `cluster:assignments/{group}/{partition}/keys/{key}`에 키→애플리케이션 매핑을 기록하고 버전 관리한다. 파티션 오너가 바뀌어도 매핑을 그대로 전달해 키 단위 세션/상태 연속성을 유지한다.
 - 자동 할당: 파티션에 새 키가 진입하면 `AssignmentService`가 활성 오너 애플리케이션으로 자동 매핑 후 CAS로 저장한다(필요 시 라운드로빈/가중치 기반 분산 옵션). 캐시 미스 시에만 metadata-store를 조회해 핫 패스 오버헤드를 최소화한다.
-- 수동/수정 흐름: 운영자가 `assignKey(partition,key,appId)` 또는 `reassignKey(partition,key,newAppId)` API로 오버라이드한다. `assignedBy=manual`로 표시하고 버전 충돌 시 거부/재시도하도록 한다. `unassignKey`로 매핑을 제거하면 다음 메시지에서 자동 할당이 다시 실행된다.
+- 수동/수정 흐름: 운영자가 `assignKey(partition,kind,key,appId)` 또는 `reassignKey(partition,key,newAppId)` API로 오버라이드한다. `assignedBy=manual`로 표시하고 버전 충돌 시 거부/재시도하도록 한다. `unassignKey`로 매핑을 제거하면 다음 메시지에서 자동 할당이 다시 실행된다.
 - 데이터 처리: 컨슈머는 파티션 assigned 시 키 매핑을 선반영한 캐시를 로드하고, 메시지 수신 시 매핑을 조회해 해당 애플리케이션 실행 경로로 라우팅한다. 매핑이 없으면 자동 할당 후 처리하며, 매핑 변경 이벤트는 `TopologyEvent` 또는 별도 `KeyAssignmentEvent`로 스트림에 전파한다.
 - 장애 복구: 애플리케이션 다운/종료로 리밸런스되면 새 파티션 오너가 키 매핑을 로드해 동일 기준으로 처리한다. 필요 시 `workflowHandoff`와 함께 키 매핑 스냅샷을 가져와 순서를 지킨다.
 
 ## Raft 모드: 워크플로/설비 핸드오프
 - 목표: 리더 주도 리밸런스 시 설비/워크플로 상태를 함께 로그에 커밋해, 새 오너가 즉시 이어받게 한다.
 - 방식:
-  - 리더가 `rebalance()` 시 `cluster:assignments` 상태 머신 항목에 {partition, owner, equipmentIds, workflowHandoff, lastAppliedIndex}를 커밋.
+  - 리더가 `rebalance()` 시 `cluster:assignments` 상태 머신 항목에 {partition, owner, affinities, workflowHandoff, lastAppliedIndex}를 커밋.
   - 팔로워는 로그 적용 시 동일한 핸드오프 데이터를 로컬에 반영하고, 노드가 활성화될 때 `TopologyEvent`로 노출.
   - 노드 다운 후 복귀하거나 새 피어가 합류할 때 스냅샷/로그 재생으로 핸드오프 정보를 함께 복원.
 - 고려사항:

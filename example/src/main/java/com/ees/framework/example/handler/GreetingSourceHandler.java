@@ -4,7 +4,6 @@ import com.ees.framework.annotations.SourceHandlerComponent;
 import com.ees.framework.context.FxContext;
 import com.ees.framework.context.FxHeaders;
 import com.ees.framework.handlers.SourceHandler;
-import reactor.core.publisher.Mono;
 
 /**
  * Adds basic tracing headers for greeting messages.
@@ -13,10 +12,10 @@ import reactor.core.publisher.Mono;
 public class GreetingSourceHandler implements SourceHandler<String> {
 
     @Override
-    public Mono<FxContext<String>> handle(FxContext<String> context) {
+    public FxContext<String> handle(FxContext<String> context) {
         FxHeaders headers = context.headers()
             .with("handled-by", "GreetingSourceHandler");
-        return Mono.just(new FxContext<>(context.command(), headers, context.message(), context.meta()));
+        return new FxContext<>(context.command(), headers, context.message(), context.meta(), context.affinity());
     }
 
     @Override
