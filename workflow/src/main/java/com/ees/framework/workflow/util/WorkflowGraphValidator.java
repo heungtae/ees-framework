@@ -26,6 +26,7 @@ public class WorkflowGraphValidator {
         ensureEndNodesExist(graph);
         ensureDag(graph);
     }
+    // ensureStartNodeExists 동작을 수행한다.
 
     private void ensureStartNodeExists(WorkflowGraphDefinition graph) {
         String startId = graph.getStartNodeId();
@@ -35,6 +36,7 @@ public class WorkflowGraphValidator {
             throw new IllegalStateException("Start node not found: " + startId);
         }
     }
+    // ensureEndNodesExist 동작을 수행한다.
 
     private void ensureEndNodesExist(WorkflowGraphDefinition graph) {
         Set<String> endIds = graph.getEndNodeIds();
@@ -51,6 +53,7 @@ public class WorkflowGraphValidator {
             }
         }
     }
+    // ensureDag 동작을 수행한다.
 
     private void ensureDag(WorkflowGraphDefinition graph) {
         Map<String, Integer> inDegree = new HashMap<>();

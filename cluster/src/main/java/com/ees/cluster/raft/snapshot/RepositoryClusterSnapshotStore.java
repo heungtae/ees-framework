@@ -13,15 +13,25 @@ import java.util.Optional;
  * Kafka KTable backends.
  */
 public class RepositoryClusterSnapshotStore implements ClusterSnapshotStore {
+    // logger를 반환한다.
 
     private static final Logger log = LoggerFactory.getLogger(RepositoryClusterSnapshotStore.class);
     private static final String PREFIX = "cluster:raft/snapshots/";
 
     private final ClusterStateRepository repository;
+    /**
+     * 인스턴스를 생성한다.
+     * @param repository 
+     */
 
     public RepositoryClusterSnapshotStore(ClusterStateRepository repository) {
         this.repository = repository;
     }
+    /**
+     * loadLatest를 수행한다.
+     * @param groupId 
+     * @return 
+     */
 
     @Override
     public Optional<ClusterSnapshot> loadLatest(String groupId) throws IOException {
@@ -31,6 +41,10 @@ public class RepositoryClusterSnapshotStore implements ClusterSnapshotStore {
         }
         return Optional.of(ClusterSnapshotCodec.deserialize(blob.get()));
     }
+    /**
+     * persist를 수행한다.
+     * @param snapshot 
+     */
 
     @Override
     public void persist(ClusterSnapshot snapshot) throws IOException {
@@ -39,6 +53,7 @@ public class RepositoryClusterSnapshotStore implements ClusterSnapshotStore {
         log.info("Persisted snapshot for group {} to repository (term={}, index={}, takenAt={})",
                 snapshot.groupId(), snapshot.term(), snapshot.index(), snapshot.takenAt());
     }
+    // key 동작을 수행한다.
 
     private String key(String groupId) {
         return PREFIX + groupId;

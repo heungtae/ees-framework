@@ -14,6 +14,10 @@ import java.util.Map;
 public class DefaultPipelineStepRegistry implements PipelineStepRegistry {
 
     private final Map<String, PipelineStep<?, ?>> byName = new HashMap<>();
+    /**
+     * 인스턴스를 생성한다.
+     * @param steps 
+     */
 
     public DefaultPipelineStepRegistry(List<PipelineStep<?, ?>> steps) {
         for (PipelineStep<?, ?> step : steps) {
@@ -23,6 +27,11 @@ public class DefaultPipelineStepRegistry implements PipelineStepRegistry {
             }
         }
     }
+    /**
+     * byName를 반환한다.
+     * @param name 
+     * @return 
+     */
 
     @Override
     public PipelineStep<?, ?> getByName(String name) {

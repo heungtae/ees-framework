@@ -16,10 +16,19 @@ public class AlertRoutingSinkHandler implements SinkHandler<String> {
     private static final String ALERT = "ALERT";
 
     private final AlertNotificationSink alertSink;
+    /**
+     * 인스턴스를 생성한다.
+     * @param alertSink 
+     */
 
     public AlertRoutingSinkHandler(AlertNotificationSink alertSink) {
         this.alertSink = alertSink;
     }
+    /**
+     * handle를 수행한다.
+     * @param context 
+     * @return 
+     */
 
     @Override
     public FxContext<String> handle(FxContext<String> context) {
@@ -28,12 +37,18 @@ public class AlertRoutingSinkHandler implements SinkHandler<String> {
         }
         return context;
     }
+    /**
+     * supports를 수행한다.
+     * @param context 
+     * @return 
+     */
 
     @Override
     public boolean supports(FxContext<?> context) {
         return context.message() != null
             && "example-greeting".equals(context.message().sourceType());
     }
+    // alert 여부를 반환한다.
 
     private boolean isAlert(FxContext<String> context) {
         Object response = context.meta().attributes().get("aiResponse");

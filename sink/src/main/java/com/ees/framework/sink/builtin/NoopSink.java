@@ -10,6 +10,10 @@ import org.springframework.stereotype.Component;
 @FxSink("noop")
 @Component
 public class NoopSink implements Sink<Object> {
+    /**
+     * write를 수행한다.
+     * @param context 
+     */
 
     @Override
     public void write(FxContext<Object> context) {

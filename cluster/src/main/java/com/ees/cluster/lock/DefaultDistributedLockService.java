@@ -10,6 +10,9 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
+/**
+ * {@link ClusterStateRepository}를 이용한 기본 분산 락 서비스 구현(CAS 기반).
+ */
 public class DefaultDistributedLockService implements DistributedLockService {
 
     private static final String LOCK_PREFIX = "cluster:locks/";
@@ -17,15 +20,22 @@ public class DefaultDistributedLockService implements DistributedLockService {
     private final ClusterStateRepository repository;
     private final Clock clock;
 
+    /**
+     * 시스템 UTC 시계를 사용해 생성한다.
+     */
     public DefaultDistributedLockService(ClusterStateRepository repository) {
         this(repository, Clock.systemUTC());
     }
 
+    /**
+     * 저장소/시계를 지정해 생성한다.
+     */
     public DefaultDistributedLockService(ClusterStateRepository repository, Clock clock) {
         this.repository = Objects.requireNonNull(repository, "repository must not be null");
         this.clock = Objects.requireNonNull(clock, "clock must not be null");
     }
 
+    /** {@inheritDoc} */
     @Override
     public Optional<LockRecord> tryAcquire(String lockName, String ownerNodeId, Duration leaseDuration, Map<String, String> metadata) {
         Objects.requireNonNull(lockName, "lockName must not be null");
@@ -47,6 +57,7 @@ public class DefaultDistributedLockService implements DistributedLockService {
         return Optional.empty();
     }
 
+    /** {@inheritDoc} */
     @Override
     public Optional<LockRecord> refresh(String lockName, String ownerNodeId, Duration leaseDuration) {
         Objects.requireNonNull(lockName, "lockName must not be null");
@@ -66,6 +77,7 @@ public class DefaultDistributedLockService implements DistributedLockService {
         return success ? Optional.of(refreshed) : Optional.empty();
     }
 
+    /** {@inheritDoc} */
     @Override
     public boolean release(String lockName, String ownerNodeId) {
         Objects.requireNonNull(lockName, "lockName must not be null");
@@ -81,18 +93,21 @@ public class DefaultDistributedLockService implements DistributedLockService {
         return repository.delete(lockKey(lockName));
     }
 
+    /** {@inheritDoc} */
     @Override
     public Optional<LockRecord> getLock(String lockName) {
         Objects.requireNonNull(lockName, "lockName must not be null");
         return repository.get(lockKey(lockName), LockRecord.class);
     }
 
+    /** {@inheritDoc} */
     @Override
     public Map<String, LockRecord> snapshotLocks() {
         return repository.scan(LOCK_PREFIX, LockRecord.class).stream()
             .collect(java.util.stream.Collectors.toMap(record -> lockKey(record.name()), record -> record));
     }
 
+    /** {@inheritDoc} */
     @Override
     public void restoreLocks(Map<String, LockRecord> locks) {
         Objects.requireNonNull(locks, "locks must not be null");
@@ -105,8 +120,10 @@ public class DefaultDistributedLockService implements DistributedLockService {
             repository.put(key, record, ttl.isNegative() ? Duration.ZERO : ttl);
         });
     }
+    // lockKey 동작을 수행한다.
 
     private String lockKey(String lockName) {
+        // 락 이름을 저장소 키로 변환한다.
         return LOCK_PREFIX + lockName;
     }
 }

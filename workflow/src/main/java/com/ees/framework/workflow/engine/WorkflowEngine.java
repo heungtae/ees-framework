@@ -79,6 +79,7 @@ public class WorkflowEngine {
     public Workflow createWorkflow(WorkflowGraphDefinition graph, WorkflowNodeResolver resolver) {
         return new DefaultWorkflow(graph, resolver, resolveBatching(graph), affinityKeyResolver);
     }
+    // resolveBatching 동작을 수행한다.
 
     private BatchingOptions resolveBatching(WorkflowGraphDefinition graph) {
         if (graph == null || graph.getBatchingOptions() == null) {
@@ -113,12 +114,18 @@ public class WorkflowEngine {
         private final WorkflowNodeResolver resolver;
         private final BatchingOptions batching;
         private final AffinityKeyResolver affinityKeyResolver;
+        // AtomicBoolean 동작을 수행한다.
 
         private final AtomicBoolean running = new AtomicBoolean(false);
+        // AtomicBoolean 동작을 수행한다.
         private final AtomicBoolean accepting = new AtomicBoolean(false);
         private final ExecutorService workerExecutor =
             Executors.newThreadPerTaskExecutor(Thread.ofVirtual().factory());
         private final ConcurrentMap<FxAffinity, PerKeyWorker> workers = new ConcurrentHashMap<>();
+        /**
+         * name를 반환한다.
+         * @return 
+         */
 
         @Override
         public String getName() {
@@ -172,6 +179,7 @@ public class WorkflowEngine {
             waitForPendingWork();
             workerExecutor.shutdown();
         }
+        // dispatch 동작을 수행한다.
 
         private long dispatch(Source<Object> source, PipelineChain chain) {
             long count = 0L;
@@ -186,12 +194,14 @@ public class WorkflowEngine {
             }
             return count;
         }
+        // createWorker 동작을 수행한다.
 
         private PerKeyWorker createWorker(FxAffinity affinity, PipelineChain chain) {
             PerKeyWorker worker = new PerKeyWorker(affinity, chain);
             worker.start();
             return worker;
         }
+        // buildPipelineChain 동작을 수행한다.
 
         private PipelineChain buildPipelineChain(WorkflowNodeDefinition startNode) {
             Map<String, WorkflowNodeDefinition> nodesById = graph.getNodes().stream()
@@ -248,6 +258,7 @@ public class WorkflowEngine {
             }
             return new PipelineChain(processors, sink);
         }
+        // successors 동작을 수행한다.
 
         private List<WorkflowNodeDefinition> successors(
             WorkflowNodeDefinition node,
@@ -264,6 +275,7 @@ public class WorkflowEngine {
             }
             return next;
         }
+        // sourceHandlerFn 동작을 수행한다.
 
         private java.util.function.Function<FxContext<Object>, FxContext<Object>> sourceHandlerFn(
             SourceHandler<Object> handler
@@ -273,6 +285,7 @@ public class WorkflowEngine {
                 return handler.supports(normalized) ? handler.handle(normalized) : normalized;
             };
         }
+        // sinkHandlerFn 동작을 수행한다.
 
         private java.util.function.Function<FxContext<Object>, FxContext<Object>> sinkHandlerFn(
             SinkHandler<Object> handler
@@ -282,6 +295,7 @@ public class WorkflowEngine {
                 return handler.supports(normalized) ? handler.handle(normalized) : normalized;
             };
         }
+        // pipelineStepFn 동작을 수행한다.
 
         private java.util.function.Function<FxContext<Object>, FxContext<Object>> pipelineStepFn(
             PipelineStep<Object, Object> step
@@ -291,6 +305,7 @@ public class WorkflowEngine {
                 return step.supports(normalized) ? step.apply(normalized) : normalized;
             };
         }
+        // waitForPendingWork 동작을 수행한다.
 
         private void waitForPendingWork() {
             Duration waitWindow = batching.cleanupIdleAfter().plus(batching.batchTimeout());
@@ -299,10 +314,12 @@ public class WorkflowEngine {
                 sleepQuietly(Duration.ofMillis(10));
             }
         }
+        // hasPendingWork 동작을 수행한다.
 
         private boolean hasPendingWork() {
             return workers.values().stream().anyMatch(PerKeyWorker::hasPendingWork);
         }
+        // normalizeAffinity 동작을 수행한다.
 
         private FxContext<Object> normalizeAffinity(FxContext<Object> context) {
             FxAffinity resolved = affinityKeyResolver.resolve(context);
@@ -322,6 +339,7 @@ public class WorkflowEngine {
             }
             return context.withAffinity(resolved);
         }
+        // sleepQuietly 동작을 수행한다.
 
         private void sleepQuietly(Duration duration) {
             try {
@@ -330,6 +348,7 @@ public class WorkflowEngine {
                 Thread.currentThread().interrupt();
             }
         }
+        // removeWorker 동작을 수행한다.
 
         private PerKeyWorker removeWorker(FxAffinity affinity) {
             return workers.remove(affinity);
@@ -342,20 +361,27 @@ public class WorkflowEngine {
 
             private final FxAffinity affinity;
             private final PipelineChain chain;
+            // queueCapacity 동작을 수행한다.
             private final ArrayBlockingQueue<FxContext<Object>> queue = new ArrayBlockingQueue<>(batching.queueCapacity());
+            // AtomicBoolean 동작을 수행한다.
             private final AtomicBoolean active = new AtomicBoolean(true);
+            // AtomicBoolean 동작을 수행한다.
             private final AtomicBoolean processing = new AtomicBoolean(false);
+            // nanoTime 동작을 수행한다.
             private volatile long lastActivityNanos = System.nanoTime();
             private Future<?> task;
+            // PerKeyWorker 동작을 수행한다.
 
             private PerKeyWorker(FxAffinity affinity, PipelineChain chain) {
                 this.affinity = affinity;
                 this.chain = chain;
             }
+            // start 동작을 수행한다.
 
             private void start() {
                 task = workerExecutor.submit(this);
             }
+            // stop 동작을 수행한다.
 
             private void stop() {
                 active.set(false);
@@ -363,6 +389,7 @@ public class WorkflowEngine {
                     task.cancel(true);
                 }
             }
+            // enqueue 동작을 수행한다.
 
             private void enqueue(FxContext<Object> context) {
                 if (!running.get()) {
@@ -397,6 +424,9 @@ public class WorkflowEngine {
                     throw new IllegalStateException("Interrupted while enqueuing workflow items", ex);
                 }
             }
+            /**
+             * run를 수행한다.
+             */
 
             @Override
             public void run() {
@@ -423,10 +453,12 @@ public class WorkflowEngine {
                     removeWorker(affinity);
                 }
             }
+            // shouldContinue 동작을 수행한다.
 
             private boolean shouldContinue() {
                 return (running.get() && active.get()) || accepting.get() || !queue.isEmpty();
             }
+            // shouldCleanup 동작을 수행한다.
 
             private boolean shouldCleanup() {
                 if (!accepting.get() && queue.isEmpty()) {
@@ -435,6 +467,7 @@ public class WorkflowEngine {
                 }
                 return false;
             }
+            // processBatch 동작을 수행한다.
 
             private void processBatch(List<FxContext<Object>> batch) {
                 processing.set(true);
@@ -450,6 +483,7 @@ public class WorkflowEngine {
                     processing.set(false);
                 }
             }
+            // drainRemaining 동작을 수행한다.
 
             private void drainRemaining(List<FxContext<Object>> reusable) {
                 if (!queue.isEmpty()) {
@@ -464,11 +498,13 @@ public class WorkflowEngine {
                     processBatch(List.of(remaining));
                 }
             }
+            // hasPendingWork 동작을 수행한다.
 
             private boolean hasPendingWork() {
                 return processing.get() || !queue.isEmpty();
             }
         }
+        // findNode 동작을 수행한다.
 
         private WorkflowNodeDefinition findNode(String nodeId) {
             return graph.getNodes().stream()

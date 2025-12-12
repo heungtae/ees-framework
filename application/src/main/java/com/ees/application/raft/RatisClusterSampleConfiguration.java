@@ -28,11 +28,21 @@ import java.util.stream.Stream;
 @Configuration
 @ConditionalOnProperty(prefix = "sample.ratis", name = "enabled", havingValue = "true")
 public class RatisClusterSampleConfiguration {
+    /**
+     * raftGroupId를 수행한다.
+     * @param groupId 
+     * @return 
+     */
 
     @Bean
     public RaftGroupId raftGroupId(@Value("${sample.ratis.group-id:00000000-0000-0000-0000-000000000001}") String groupId) {
         return RaftGroupId.valueOf(UUID.fromString(groupId));
     }
+    /**
+     * raftPeers를 수행한다.
+     * @param peers 
+     * @return 
+     */
 
     @Bean
     public List<RaftPeer> raftPeers(@Value("${sample.ratis.peers:node1:localhost:9876}") String peers) {
@@ -42,11 +52,22 @@ public class RatisClusterSampleConfiguration {
                 .map(RatisClusterSampleConfiguration::toPeer)
                 .collect(Collectors.toList());
     }
+    /**
+     * raftGroup를 수행한다.
+     * @param groupId 
+     * @param peers 
+     * @return 
+     */
 
     @Bean
     public RaftGroup raftGroup(RaftGroupId groupId, List<RaftPeer> peers) {
         return RaftGroup.valueOf(groupId, peers);
     }
+    /**
+     * raftClient를 수행한다.
+     * @param raftGroup 
+     * @return 
+     */
 
     @Bean
     public RaftClient raftClient(RaftGroup raftGroup) {
@@ -56,11 +77,18 @@ public class RatisClusterSampleConfiguration {
                 .setRaftGroup(raftGroup)
                 .build();
     }
+    /**
+     * ratisLeaderElectionBridge를 수행한다.
+     * @param raftClient 
+     * @param groupId 
+     * @return 
+     */
 
     @Bean
     public RatisLeaderElectionBridge ratisLeaderElectionBridge(RaftClient raftClient, RaftGroupId groupId) {
         return new RatisLeaderElectionBridge(raftClient, groupId);
     }
+    // toPeer 동작을 수행한다.
 
     private static RaftPeer toPeer(String spec) {
         // Format: id:host:port

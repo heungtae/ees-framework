@@ -14,6 +14,10 @@ import java.util.Map;
 public class DefaultSinkRegistry implements SinkRegistry {
 
     private final Map<String, Sink<?>> byType = new HashMap<>();
+    /**
+     * 인스턴스를 생성한다.
+     * @param sinks 
+     */
 
     public DefaultSinkRegistry(List<Sink<?>> sinks) {
         for (Sink<?> sink : sinks) {
@@ -23,6 +27,11 @@ public class DefaultSinkRegistry implements SinkRegistry {
             }
         }
     }
+    /**
+     * byType를 반환한다.
+     * @param type 
+     * @return 
+     */
 
     @Override
     public Sink<?> getByType(String type) {

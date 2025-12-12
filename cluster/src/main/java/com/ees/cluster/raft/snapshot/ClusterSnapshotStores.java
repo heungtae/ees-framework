@@ -10,9 +10,16 @@ import java.util.Objects;
  * Factory helpers to select a snapshot store based on {@link RaftServerConfig.SnapshotStore} settings.
  */
 public final class ClusterSnapshotStores {
+    // 인스턴스를 생성한다.
 
     private ClusterSnapshotStores() {
     }
+    /**
+     * forConfig를 수행한다.
+     * @param config 
+     * @param repository 
+     * @return 
+     */
 
     public static ClusterSnapshotStore forConfig(RaftServerConfig config, ClusterStateRepository repository) {
         Objects.requireNonNull(config, "config must not be null");

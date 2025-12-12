@@ -35,15 +35,27 @@ public class AiChatController {
 
     private final AiAgentService aiAgentService;
     private final McpClient mcpClient;
+    // of 동작을 수행한다.
 
     private static final Set<String> DANGEROUS_TOOLS = Set.of(
         "cancelWorkflow", "pauseWorkflow", "resumeWorkflow", "assignKey", "releaseLock", "startWorkflow"
     );
+    /**
+     * 인스턴스를 생성한다.
+     * @param aiAgentService 
+     * @param mcpClient 
+     */
 
     public AiChatController(AiAgentService aiAgentService, ObjectProvider<McpClient> mcpClient) {
         this.aiAgentService = aiAgentService;
         this.mcpClient = mcpClient.getIfAvailable();
     }
+    /**
+     * chat를 수행한다.
+     * @param request 
+     * @param approved 
+     * @return 
+     */
 
     @PostMapping("/chat")
     public AiResponse chat(@RequestBody AiRequest request,
@@ -51,6 +63,12 @@ public class AiChatController {
         AiRequest normalized = normalize(request, false, approved);
         return aiAgentService.chat(normalized);
     }
+    /**
+     * chatStream를 수행한다.
+     * @param request 
+     * @param approved 
+     * @return 
+     */
 
     @PostMapping(value = "/chat/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter chatStream(@RequestBody AiRequest request,
@@ -75,18 +93,27 @@ public class AiChatController {
         }).start();
         return emitter;
     }
+    /**
+     * listNodes를 수행한다.
+     * @return 
+     */
 
     @GetMapping("/resources/nodes")
     public ResponseEntity<String> listNodes() {
         requireMcp();
         return ResponseEntity.ok(mcpClient.listNodes());
     }
+    /**
+     * topology를 수행한다.
+     * @return 
+     */
 
     @GetMapping("/resources/topology")
     public ResponseEntity<String> topology() {
         requireMcp();
         return ResponseEntity.ok(mcpClient.describeTopology());
     }
+    // normalize 동작을 수행한다.
 
     private AiRequest normalize(AiRequest request, boolean forceStreaming, boolean approved) {
         if (request == null || isBlank(request.sessionId())) {
@@ -118,10 +145,12 @@ public class AiChatController {
             forceStreaming || request.streaming()
         );
     }
+    // blank 여부를 반환한다.
 
     private boolean isBlank(String value) {
         return value == null || value.isBlank();
     }
+    // validateDangerousTools 동작을 수행한다.
 
     private void validateDangerousTools(List<String> toolsAllowed, boolean approved) {
         if (toolsAllowed.isEmpty()) {
@@ -132,6 +161,7 @@ public class AiChatController {
             throw new ResponseStatusException(BAD_REQUEST, "Dangerous tools require explicit approval header (X-AI-Approve: true)");
         }
     }
+    // requireMcp 동작을 수행한다.
 
     private void requireMcp() {
         if (mcpClient == null) {

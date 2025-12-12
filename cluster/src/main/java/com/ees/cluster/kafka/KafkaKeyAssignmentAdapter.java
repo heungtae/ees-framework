@@ -17,6 +17,13 @@ public class KafkaKeyAssignmentAdapter<T> {
     private final AssignmentService assignmentService;
     private final AffinityKeyExtractor<T> extractor;
     private final String groupId;
+    /**
+     * KafkaKeyAssignmentAdapter를 수행한다.
+     * @param assignmentService 
+     * @param groupId 
+     * @param extractor 
+     * @return 
+     */
 
     public KafkaKeyAssignmentAdapter(AssignmentService assignmentService,
                                      String groupId,
@@ -25,6 +32,14 @@ public class KafkaKeyAssignmentAdapter<T> {
         this.groupId = Objects.requireNonNull(groupId, "groupId must not be null");
         this.extractor = Objects.requireNonNull(extractor, "extractor must not be null");
     }
+    /**
+     * assignKey를 수행한다.
+     * @param partition 
+     * @param record 
+     * @param appId 
+     * @param source 
+     * @return 
+     */
 
     public Optional<KeyAssignment> assignKey(int partition, T record, String appId, KeyAssignmentSource source) {
         Objects.requireNonNull(source, "source must not be null");

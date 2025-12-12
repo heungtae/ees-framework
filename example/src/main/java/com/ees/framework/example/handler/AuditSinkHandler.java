@@ -14,6 +14,11 @@ import java.util.Map;
  */
 @SinkHandlerComponent("audit-sink-handler")
 public class AuditSinkHandler implements SinkHandler<String> {
+    /**
+     * handle를 수행한다.
+     * @param context 
+     * @return 
+     */
 
     @Override
     public FxContext<String> handle(FxContext<String> context) {
@@ -29,6 +34,11 @@ public class AuditSinkHandler implements SinkHandler<String> {
         );
         return context.withMeta(meta);
     }
+    /**
+     * supports를 수행한다.
+     * @param context 
+     * @return 
+     */
 
     @Override
     public boolean supports(FxContext<?> context) {

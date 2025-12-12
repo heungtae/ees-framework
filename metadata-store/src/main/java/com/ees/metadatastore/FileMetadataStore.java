@@ -26,10 +26,20 @@ public class FileMetadataStore implements MetadataStore {
     private final Clock clock;
     private final Map<String, StoredValue> cache = new ConcurrentHashMap<>();
     private final CopyOnWriteArrayList<Consumer<MetadataStoreEvent>> listeners = new CopyOnWriteArrayList<>();
+    /**
+     * 인스턴스를 생성한다.
+     * @param baseDir 
+     */
 
     public FileMetadataStore(Path baseDir) {
         this(baseDir, new JsonMetadataSerializer(), Clock.systemUTC());
     }
+    /**
+     * 인스턴스를 생성한다.
+     * @param baseDir 
+     * @param serializer 
+     * @param clock 
+     */
 
     public FileMetadataStore(Path baseDir, MetadataSerializer serializer, Clock clock) {
         this.baseDir = Objects.requireNonNull(baseDir, "baseDir must not be null");
@@ -41,6 +51,13 @@ public class FileMetadataStore implements MetadataStore {
             throw new IllegalStateException("Failed to create metadata store directory: " + baseDir, e);
         }
     }
+    /**
+     * put를 수행한다.
+     * @param key 
+     * @param value 
+     * @param ttl 
+     * @return 
+     */
 
     @Override
     public <T> boolean put(String key, T value, Duration ttl) {
@@ -54,6 +71,13 @@ public class FileMetadataStore implements MetadataStore {
         publishEvent(key, MetadataStoreEventType.PUT, value);
         return true;
     }
+    /**
+     * putIfAbsent를 수행한다.
+     * @param key 
+     * @param value 
+     * @param ttl 
+     * @return 
+     */
 
     @Override
     public <T> boolean putIfAbsent(String key, T value, Duration ttl) {
@@ -67,6 +91,12 @@ public class FileMetadataStore implements MetadataStore {
         }
         return put(key, value, ttl);
     }
+    /**
+     * get를 수행한다.
+     * @param key 
+     * @param type 
+     * @return 
+     */
 
     @Override
     public <T> Optional<T> get(String key, Class<T> type) {
@@ -81,6 +111,11 @@ public class FileMetadataStore implements MetadataStore {
         T value = serializer.deserialize(stored.bytes(), type);
         return Optional.ofNullable(value);
     }
+    /**
+     * delete를 수행한다.
+     * @param key 
+     * @return 
+     */
 
     @Override
     public boolean delete(String key) {
@@ -96,6 +131,14 @@ public class FileMetadataStore implements MetadataStore {
         }
         return removed != null;
     }
+    /**
+     * compareAndSet를 수행한다.
+     * @param key 
+     * @param expectedValue 
+     * @param newValue 
+     * @param ttl 
+     * @return 
+     */
 
     @Override
     public <T> boolean compareAndSet(String key, T expectedValue, T newValue, Duration ttl) {
@@ -110,6 +153,12 @@ public class FileMetadataStore implements MetadataStore {
         }
         return put(key, newValue, ttl);
     }
+    /**
+     * scan를 수행한다.
+     * @param prefix 
+     * @param type 
+     * @return 
+     */
 
     @Override
     public <T> List<T> scan(String prefix, Class<T> type) {
@@ -128,6 +177,11 @@ public class FileMetadataStore implements MetadataStore {
             throw new IllegalStateException("Failed to scan metadata files", e);
         }
     }
+    /**
+     * watch를 수행한다.
+     * @param prefix 
+     * @param consumer 
+     */
 
     @Override
     public void watch(String prefix, Consumer<MetadataStoreEvent> consumer) {
@@ -140,6 +194,7 @@ public class FileMetadataStore implements MetadataStore {
             }
         });
     }
+    // cleanExpired 동작을 수행한다.
 
     private void cleanExpired() {
         try {
@@ -159,6 +214,7 @@ public class FileMetadataStore implements MetadataStore {
             throw new IllegalStateException("Failed to scan metadata directory for expiration", e);
         }
     }
+    // writeToDisk 동작을 수행한다.
 
     private void writeToDisk(String key, StoredValue stored) {
         try {
@@ -173,10 +229,12 @@ public class FileMetadataStore implements MetadataStore {
             throw new IllegalStateException("Failed to write metadata for key " + key, e);
         }
     }
+    // readFromDisk 동작을 수행한다.
 
     private StoredValue readFromDisk(String key) {
         return readStoredValue(pathForKey(key));
     }
+    // readStoredValue 동작을 수행한다.
 
     private StoredValue readStoredValue(Path path) {
         if (!Files.exists(path)) {
@@ -198,22 +256,27 @@ public class FileMetadataStore implements MetadataStore {
             throw new IllegalStateException("Failed to read metadata from " + path, e);
         }
     }
+    // pathForKey 동작을 수행한다.
 
     private Path pathForKey(String key) {
         return baseDir.resolve(safeName(key));
     }
+    // safeName 동작을 수행한다.
 
     private String safeName(String key) {
         return key.replaceAll("[^a-zA-Z0-9\\-_.:]", "_");
     }
+    // keyFromPath 동작을 수행한다.
 
     private String keyFromPath(Path path) {
         return path.getFileName().toString();
     }
+    // publishEvent 동작을 수행한다.
 
     private void publishEvent(String key, MetadataStoreEventType type, Object value) {
         publishEvent(key, type, value, clock.instant());
     }
+    // publishEvent 동작을 수행한다.
 
     private void publishEvent(String key, MetadataStoreEventType type, Object value, Instant when) {
         MetadataStoreEvent event = new MetadataStoreEvent(key, type, Optional.ofNullable(value), when);

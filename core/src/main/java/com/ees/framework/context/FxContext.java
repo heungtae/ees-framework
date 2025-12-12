@@ -28,6 +28,12 @@ public record FxContext<T>(
         Objects.requireNonNull(meta, "meta must not be null");
         affinity = affinity == null ? FxAffinity.none() : affinity;
     }
+    /**
+     * of를 수행한다.
+     * @param message 
+     * @param command 
+     * @return 
+     */
 
     public static <T> FxContext<T> of(FxMessage<T> message, FxCommand command) {
         return new FxContext<>(command, FxHeaders.empty(), message, FxMeta.empty(), FxAffinity.none());

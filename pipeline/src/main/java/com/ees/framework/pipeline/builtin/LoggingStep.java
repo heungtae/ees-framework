@@ -12,8 +12,14 @@ import org.springframework.stereotype.Component;
 @FxPipelineStep("logging-step")
 @Component
 public class LoggingStep implements PipelineStep<Object, Object> {
+    // logger를 반환한다.
 
     private static final Logger log = LoggerFactory.getLogger(LoggingStep.class);
+    /**
+     * apply를 수행한다.
+     * @param context 
+     * @return 
+     */
 
     @Override
     public FxContext<Object> apply(FxContext<Object> context) {

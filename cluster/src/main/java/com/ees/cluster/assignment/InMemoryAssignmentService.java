@@ -16,6 +16,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
 
+/**
+ * 단일 프로세스에서 사용할 수 있는 in-memory {@link AssignmentService} 구현.
+ */
 public class InMemoryAssignmentService implements AssignmentService {
 
     private final Map<String, Map<Integer, Assignment>> assignments = new ConcurrentHashMap<>();
@@ -23,14 +26,23 @@ public class InMemoryAssignmentService implements AssignmentService {
     private final CopyOnWriteArrayList<Consumer<TopologyEvent>> listeners = new CopyOnWriteArrayList<>();
     private final Clock clock;
 
+    /**
+     * 시스템 UTC 시계를 사용해 생성한다.
+     */
     public InMemoryAssignmentService() {
         this(Clock.systemUTC());
     }
 
+    /**
+     * 주어진 시계를 사용해 생성한다(테스트 용이성).
+     *
+     * @param clock 시간 소스(널 불가)
+     */
     public InMemoryAssignmentService(Clock clock) {
         this.clock = Objects.requireNonNull(clock, "clock must not be null");
     }
 
+    /** {@inheritDoc} */
     @Override
     public void applyAssignments(String groupId, Collection<Assignment> updates) {
         Objects.requireNonNull(groupId, "groupId must not be null");
@@ -48,6 +60,7 @@ public class InMemoryAssignmentService implements AssignmentService {
         }
     }
 
+    /** {@inheritDoc} */
     @Override
     public void revokeAssignments(String groupId, Collection<Integer> partitions, String reason) {
         Objects.requireNonNull(groupId, "groupId must not be null");
@@ -64,6 +77,7 @@ public class InMemoryAssignmentService implements AssignmentService {
         }
     }
 
+    /** {@inheritDoc} */
     @Override
     public Optional<Assignment> findAssignment(String groupId, int partition) {
         Objects.requireNonNull(groupId, "groupId must not be null");
@@ -71,6 +85,7 @@ public class InMemoryAssignmentService implements AssignmentService {
         return Optional.ofNullable(groupAssignments.get(partition));
     }
 
+    /** {@inheritDoc} */
     @Override
     public KeyAssignment assignKey(String groupId, int partition, String kind, String key, String appId, KeyAssignmentSource source) {
         Objects.requireNonNull(groupId, "groupId must not be null");
@@ -91,6 +106,7 @@ public class InMemoryAssignmentService implements AssignmentService {
         return updated;
     }
 
+    /** {@inheritDoc} */
     @Override
     public Optional<KeyAssignment> getKeyAssignment(String groupId, int partition, String kind, String key) {
         Objects.requireNonNull(groupId, "groupId must not be null");
@@ -102,6 +118,7 @@ public class InMemoryAssignmentService implements AssignmentService {
         return Optional.ofNullable(kindAssignments.get(key));
     }
 
+    /** {@inheritDoc} */
     @Override
     public boolean unassignKey(String groupId, int partition, String kind, String key) {
         Objects.requireNonNull(groupId, "groupId must not be null");
@@ -127,12 +144,15 @@ public class InMemoryAssignmentService implements AssignmentService {
         return removed != null;
     }
 
+    /** {@inheritDoc} */
     @Override
     public void topologyEvents(Consumer<TopologyEvent> consumer) {
         listeners.add(consumer);
     }
+    // emitEvent 동작을 수행한다.
 
     private void emitEvent(TopologyEvent event) {
+        // 등록된 리스너들에게 토폴로지 이벤트를 전달한다.
         for (Consumer<TopologyEvent> listener : listeners) {
             listener.accept(event);
         }

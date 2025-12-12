@@ -90,6 +90,7 @@ public class LinearToGraphConverter {
             }
         });
     }
+    // buildSequentialHandlers 동작을 수행한다.
 
     private String buildSequentialHandlers(
         WorkflowGraphDsl.Builder wf,
@@ -112,6 +113,7 @@ public class LinearToGraphConverter {
         }
         return lastId;
     }
+    // buildParallelHandlers 동작을 수행한다.
 
     private void buildParallelHandlers(
         WorkflowGraphDsl.Builder wf,

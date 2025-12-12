@@ -15,11 +15,20 @@ public class RaftStateMachineHealthIndicator implements HealthIndicator {
 
     private final List<RaftStateMachineMetrics> metricsList;
     private final Clock clock;
+    /**
+     * 인스턴스를 생성한다.
+     * @param metricsList 
+     * @param clock 
+     */
 
     public RaftStateMachineHealthIndicator(List<RaftStateMachineMetrics> metricsList, Clock clock) {
         this.metricsList = metricsList;
         this.clock = clock;
     }
+    /**
+     * health를 수행한다.
+     * @return 
+     */
 
     @Override
     public Health health() {

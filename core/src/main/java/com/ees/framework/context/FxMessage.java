@@ -22,6 +22,12 @@ public record FxMessage<T>(
         Objects.requireNonNull(payload, "payload must not be null");
         Objects.requireNonNull(timestamp, "timestamp must not be null");
     }
+    /**
+     * now를 수행한다.
+     * @param sourceType 
+     * @param payload 
+     * @return 
+     */
 
     public static <T> FxMessage<T> now(String sourceType, T payload) {
         return new FxMessage<>(sourceType, payload, Instant.now(), null);

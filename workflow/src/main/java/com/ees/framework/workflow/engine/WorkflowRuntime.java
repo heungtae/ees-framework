@@ -104,11 +104,13 @@ public class WorkflowRuntime {
         graphDefinitions.forEach(this::registerGraphDefinition);
         startAll();
     }
+    // registerWorkflowDefinition 동작을 수행한다.
 
     private void registerWorkflowDefinition(WorkflowDefinition definition) {
         WorkflowGraphDefinition graph = converter.convert(definition);
         registerGraphDefinition(graph);
     }
+    // registerGraphDefinition 동작을 수행한다.
 
     private void registerGraphDefinition(WorkflowGraphDefinition graph) {
         validator.validate(graph);

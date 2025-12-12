@@ -16,6 +16,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 @FxSink("triage-collector")
 @Component
 public class TriageSink implements Sink<String> {
+    // logger를 반환한다.
 
     private static final Logger log = LoggerFactory.getLogger(TriageSink.class);
 
@@ -57,6 +58,7 @@ public class TriageSink implements Sink<String> {
     public List<FxContext<String>> getNormal() {
         return List.copyOf(normal);
     }
+    // extractClassification 동작을 수행한다.
 
     private String extractClassification(FxContext<String> context) {
         Object resp = context.meta().attributes().get("aiResponse");

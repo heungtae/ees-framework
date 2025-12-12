@@ -25,7 +25,11 @@ public class GreetingSource implements Source<String> {
 
     private final List<String> greetings;
     private final FxCommand command;
+    // AtomicInteger 동작을 수행한다.
     private final AtomicInteger sequence = new AtomicInteger();
+    /**
+     * 인스턴스를 생성한다.
+     */
 
     public GreetingSource() {
         this(List.of(
@@ -34,11 +38,19 @@ public class GreetingSource implements Source<String> {
             "enjoy the reactive ride"
         ));
     }
+    /**
+     * 인스턴스를 생성한다.
+     * @param greetings 
+     */
 
     public GreetingSource(List<String> greetings) {
         this.greetings = List.copyOf(greetings);
         this.command = FxCommand.of("example-greeting");
     }
+    /**
+     * read를 수행한다.
+     * @return 
+     */
 
     @Override
     public Iterable<FxContext<String>> read() {

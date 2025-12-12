@@ -48,26 +48,51 @@ public class FxFrameworkAutoConfiguration {
     // ------------------------------------------------------------------------
     // Registry beans
     // ------------------------------------------------------------------------
+    /**
+     * sourceRegistry를 수행한다.
+     * @param sources 
+     * @return 
+     */
 
     @Bean
     public SourceRegistry sourceRegistry(List<Source<?>> sources) {
         return new DefaultSourceRegistry(sources);
     }
+    /**
+     * sourceHandlerRegistry를 수행한다.
+     * @param handlers 
+     * @return 
+     */
 
     @Bean
     public SourceHandlerRegistry sourceHandlerRegistry(List<SourceHandler<?>> handlers) {
         return new DefaultSourceHandlerRegistry(handlers);
     }
+    /**
+     * sinkHandlerRegistry를 수행한다.
+     * @param handlers 
+     * @return 
+     */
 
     @Bean
     public SinkHandlerRegistry sinkHandlerRegistry(List<SinkHandler<?>> handlers) {
         return new DefaultSinkHandlerRegistry(handlers);
     }
+    /**
+     * pipelineStepRegistry를 수행한다.
+     * @param steps 
+     * @return 
+     */
 
     @Bean
     public PipelineStepRegistry pipelineStepRegistry(List<PipelineStep<?, ?>> steps) {
         return new DefaultPipelineStepRegistry(steps);
     }
+    /**
+     * sinkRegistry를 수행한다.
+     * @param sinks 
+     * @return 
+     */
 
     @Bean
     public SinkRegistry sinkRegistry(List<Sink<?>> sinks) {
@@ -77,16 +102,30 @@ public class FxFrameworkAutoConfiguration {
     // ------------------------------------------------------------------------
     // Workflow utilities
     // ------------------------------------------------------------------------
+    /**
+     * workflowGraphValidator를 수행한다.
+     * @return 
+     */
 
     @Bean
     public WorkflowGraphValidator workflowGraphValidator() {
         return new WorkflowGraphValidator();
     }
+    /**
+     * linearToGraphConverter를 수행한다.
+     * @return 
+     */
 
     @Bean
     public LinearToGraphConverter linearToGraphConverter() {
         return new LinearToGraphConverter();
     }
+    /**
+     * reactorWorkflowEngine를 수행한다.
+     * @param clusterProperties 
+     * @param workflowProperties 
+     * @return 
+     */
 
     @Bean
     public WorkflowEngine reactorWorkflowEngine(ClusterProperties clusterProperties,
@@ -96,6 +135,15 @@ public class FxFrameworkAutoConfiguration {
             new DefaultAffinityKeyResolver(clusterProperties.getAssignmentAffinityKind())
         );
     }
+    /**
+     * workflowNodeResolver를 수행한다.
+     * @param sourceRegistry 
+     * @param sourceHandlerRegistry 
+     * @param pipelineStepRegistry 
+     * @param sinkHandlerRegistry 
+     * @param sinkRegistry 
+     * @return 
+     */
 
     @Bean
     public WorkflowNodeResolver workflowNodeResolver(
@@ -117,6 +165,16 @@ public class FxFrameworkAutoConfiguration {
     // ------------------------------------------------------------------------
     // Workflow runtime
     // ------------------------------------------------------------------------
+    /**
+     * workflowRuntime를 수행한다.
+     * @param workflowDefinitions 
+     * @param workflowGraphDefinitions 
+     * @param converter 
+     * @param validator 
+     * @param engine 
+     * @param resolver 
+     * @return 
+     */
 
     @Bean
     public WorkflowRuntime workflowRuntime(

@@ -11,14 +11,26 @@ import java.util.Objects;
 public class JsonMetadataSerializer implements MetadataSerializer {
 
     private final ObjectMapper objectMapper;
+    /**
+     * 인스턴스를 생성한다.
+     */
 
     public JsonMetadataSerializer() {
         this(new ObjectMapper());
     }
+    /**
+     * 인스턴스를 생성한다.
+     * @param objectMapper 
+     */
 
     public JsonMetadataSerializer(ObjectMapper objectMapper) {
         this.objectMapper = Objects.requireNonNull(objectMapper, "objectMapper must not be null");
     }
+    /**
+     * serialize를 수행한다.
+     * @param value 
+     * @return 
+     */
 
     @Override
     public byte[] serialize(Object value) {
@@ -29,6 +41,12 @@ public class JsonMetadataSerializer implements MetadataSerializer {
             throw new IllegalStateException("Failed to serialize metadata value", e);
         }
     }
+    /**
+     * deserialize를 수행한다.
+     * @param payload 
+     * @param type 
+     * @return 
+     */
 
     @Override
     public <T> T deserialize(byte[] payload, Class<T> type) {

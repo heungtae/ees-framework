@@ -35,16 +35,32 @@ public class RaftAssignmentService implements AssignmentService {
     private final Map<String, Map<Integer, Assignment>> cache = new ConcurrentHashMap<>();
     private final Map<String, Map<Integer, Map<String, Map<String, KeyAssignment>>>> keyCache = new ConcurrentHashMap<>();
     private final Duration ttl;
+    /**
+     * 인스턴스를 생성한다.
+     * @param repository 
+     * @param ttl 
+     */
 
     public RaftAssignmentService(ClusterStateRepository repository, Duration ttl) {
         this(repository, ttl, Clock.systemUTC());
     }
+    /**
+     * 인스턴스를 생성한다.
+     * @param repository 
+     * @param ttl 
+     * @param clock 
+     */
 
     public RaftAssignmentService(ClusterStateRepository repository, Duration ttl, Clock clock) {
         this.repository = Objects.requireNonNull(repository, "repository must not be null");
         this.ttl = Objects.requireNonNull(ttl, "ttl must not be null");
         this.clock = Objects.requireNonNull(clock, "clock must not be null");
     }
+    /**
+     * applyAssignments를 수행한다.
+     * @param groupId 
+     * @param assignments 
+     */
 
     @Override
     public void applyAssignments(String groupId, Collection<Assignment> assignments) {
@@ -67,6 +83,12 @@ public class RaftAssignmentService implements AssignmentService {
                 now));
         });
     }
+    /**
+     * revokeAssignments를 수행한다.
+     * @param groupId 
+     * @param partitions 
+     * @param reason 
+     */
 
     @Override
     public void revokeAssignments(String groupId, Collection<Integer> partitions, String reason) {
@@ -82,6 +104,12 @@ public class RaftAssignmentService implements AssignmentService {
             }
         });
     }
+    /**
+     * findAssignment를 수행한다.
+     * @param groupId 
+     * @param partition 
+     * @return 
+     */
 
     @Override
     public Optional<Assignment> findAssignment(String groupId, int partition) {
@@ -95,6 +123,16 @@ public class RaftAssignmentService implements AssignmentService {
         loaded.ifPresent(value -> group.put(partition, value));
         return loaded;
     }
+    /**
+     * assignKey를 수행한다.
+     * @param groupId 
+     * @param partition 
+     * @param kind 
+     * @param key 
+     * @param appId 
+     * @param source 
+     * @return 
+     */
 
     @Override
     public KeyAssignment assignKey(String groupId, int partition, String kind, String key, String appId, KeyAssignmentSource source) {
@@ -118,6 +156,14 @@ public class RaftAssignmentService implements AssignmentService {
             now));
         return updated;
     }
+    /**
+     * keyAssignment를 반환한다.
+     * @param groupId 
+     * @param partition 
+     * @param kind 
+     * @param key 
+     * @return 
+     */
 
     @Override
     public Optional<KeyAssignment> getKeyAssignment(String groupId, int partition, String kind, String key) {
@@ -135,6 +181,14 @@ public class RaftAssignmentService implements AssignmentService {
         loaded.ifPresent(value -> kindCache.put(key, value));
         return loaded;
     }
+    /**
+     * unassignKey를 수행한다.
+     * @param groupId 
+     * @param partition 
+     * @param kind 
+     * @param key 
+     * @return 
+     */
 
     @Override
     public boolean unassignKey(String groupId, int partition, String kind, String key) {
@@ -154,6 +208,10 @@ public class RaftAssignmentService implements AssignmentService {
         }
         return deleted;
     }
+    /**
+     * topologyEvents를 수행한다.
+     * @param consumer 
+     */
 
     @Override
     public void topologyEvents(Consumer<TopologyEvent> consumer) {
@@ -214,14 +272,17 @@ public class RaftAssignmentService implements AssignmentService {
             groupKeys.put(partition, copy);
         });
     }
+    // assignmentKey 동작을 수행한다.
 
     private String assignmentKey(String groupId, int partition) {
         return ASSIGNMENTS_PREFIX + groupId + "/" + partition;
     }
+    // keyAssignmentKey 동작을 수행한다.
 
     private String keyAssignmentKey(String groupId, int partition, String kind, String key) {
         return KEY_ASSIGNMENTS_PREFIX + groupId + "/" + partition + "/" + kind + "/" + key;
     }
+    // emit 동작을 수행한다.
 
     private void emit(TopologyEvent event) {
         for (Consumer<TopologyEvent> listener : listeners) {

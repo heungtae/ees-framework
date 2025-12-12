@@ -7,9 +7,14 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.util.Objects;
 
+/**
+ * {@link RaftCommandEnvelope}을 JSON으로 직렬화/역직렬화하는 코덱.
+ */
 public final class RaftCommandCodec {
+    // ObjectMapper 동작을 수행한다.
 
     private static final ObjectMapper mapper = new ObjectMapper();
+    // 인스턴스를 생성한다.
 
     private RaftCommandCodec() {
     }
@@ -17,6 +22,11 @@ public final class RaftCommandCodec {
     static {
         mapper.findAndRegisterModules();
     }
+    /**
+     * serialize를 수행한다.
+     * @param envelope 
+     * @return 
+     */
 
     public static byte[] serialize(RaftCommandEnvelope envelope) {
         Objects.requireNonNull(envelope, "envelope must not be null");
@@ -26,6 +36,11 @@ public final class RaftCommandCodec {
             throw new IllegalArgumentException("Failed to serialize raft command", e);
         }
     }
+    /**
+     * deserialize를 수행한다.
+     * @param data 
+     * @return 
+     */
 
     public static RaftCommandEnvelope deserialize(byte[] data) throws IOException {
         Objects.requireNonNull(data, "data must not be null");
@@ -42,8 +57,10 @@ public final class RaftCommandCodec {
         RaftCommand command = decodePayload(type, payload);
         return new RaftCommandEnvelope(version, type, command);
     }
+    // decodePayload 동작을 수행한다.
 
     private static RaftCommand decodePayload(CommandType type, JsonNode payload) throws JsonProcessingException {
+        // CommandType에 따라 payload를 구체 명령 클래스로 역직렬화한다.
         return switch (type) {
             case LOCK_ACQUIRE -> mapper.treeToValue(payload, LockCommand.class);
             case LOCK_RELEASE -> mapper.treeToValue(payload, ReleaseLockCommand.class);

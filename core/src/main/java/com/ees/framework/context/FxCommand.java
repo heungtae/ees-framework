@@ -17,6 +17,11 @@ public record FxCommand(
     public FxCommand {
         Objects.requireNonNull(name, "name must not be null");
     }
+    /**
+     * of를 수행한다.
+     * @param name 
+     * @return 
+     */
 
     public static FxCommand of(String name) {
         return new FxCommand(name, null, null);

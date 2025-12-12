@@ -17,6 +17,10 @@ import org.springframework.context.annotation.Import;
     com.ees.framework.example.ai.StubAiAgentService.class
 })
 public class AiWorkflowConfiguration {
+    /**
+     * aiDemoWorkflowDefinition를 수행한다.
+     * @return 
+     */
 
     @Bean
     public WorkflowDefinition aiDemoWorkflowDefinition() {

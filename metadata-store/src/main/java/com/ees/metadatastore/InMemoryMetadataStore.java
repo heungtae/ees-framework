@@ -11,20 +11,36 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
+/**
+ * 단일 프로세스에서 사용할 수 있는 In-Memory {@link MetadataStore} 구현.
+ * <p>
+ * TTL 만료 처리는 각 API 호출 시점에 동기적으로 정리(clean-up)하며, prefix 기반 이벤트 watch를 지원한다.
+ */
 public class InMemoryMetadataStore implements MetadataStore {
 
     private final ConcurrentHashMap<String, StoredValue> store = new ConcurrentHashMap<>();
     private final CopyOnWriteArrayList<Consumer<MetadataStoreEvent>> listeners = new CopyOnWriteArrayList<>();
     private final Clock clock;
 
+    /**
+     * 시스템 UTC 시계를 사용해 저장소를 생성한다.
+     */
     public InMemoryMetadataStore() {
         this(Clock.systemUTC());
     }
 
+    /**
+     * 주어진 시계를 사용해 저장소를 생성한다(테스트 용이성).
+     *
+     * @param clock 시간 소스(널 불가)
+     */
     public InMemoryMetadataStore(Clock clock) {
         this.clock = Objects.requireNonNull(clock, "clock must not be null");
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public <T> boolean put(String key, T value, Duration ttl) {
         Objects.requireNonNull(key, "key must not be null");
@@ -36,6 +52,9 @@ public class InMemoryMetadataStore implements MetadataStore {
         return true;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public <T> boolean putIfAbsent(String key, T value, Duration ttl) {
         Objects.requireNonNull(key, "key must not be null");
@@ -57,6 +76,9 @@ public class InMemoryMetadataStore implements MetadataStore {
         return false;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public <T> Optional<T> get(String key, Class<T> type) {
         Objects.requireNonNull(key, "key must not be null");
@@ -73,6 +95,9 @@ public class InMemoryMetadataStore implements MetadataStore {
         return Optional.of(type.cast(value.value()));
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public boolean delete(String key) {
         Objects.requireNonNull(key, "key must not be null");
@@ -84,6 +109,9 @@ public class InMemoryMetadataStore implements MetadataStore {
         return removed != null;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public <T> boolean compareAndSet(String key, T expectedValue, T newValue, Duration ttl) {
         Objects.requireNonNull(key, "key must not be null");
@@ -101,6 +129,9 @@ public class InMemoryMetadataStore implements MetadataStore {
         return true;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public <T> java.util.List<T> scan(String prefix, Class<T> type) {
         Objects.requireNonNull(prefix, "prefix must not be null");
@@ -116,6 +147,9 @@ public class InMemoryMetadataStore implements MetadataStore {
             .toList();
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void watch(String prefix, Consumer<MetadataStoreEvent> consumer) {
         Objects.requireNonNull(prefix, "prefix must not be null");
@@ -127,8 +161,10 @@ public class InMemoryMetadataStore implements MetadataStore {
             }
         });
     }
+    // cleanExpired 동작을 수행한다.
 
     private void cleanExpired() {
+        // store 전반을 순회하며 TTL 만료 데이터를 제거하고 EXPIRE 이벤트를 발행한다.
         Instant now = clock.instant();
         for (Map.Entry<String, StoredValue> entry : store.entrySet()) {
             if (MetadataTtlUtils.isExpired(clock, entry.getValue().expiresAt())) {
@@ -137,12 +173,16 @@ public class InMemoryMetadataStore implements MetadataStore {
             }
         }
     }
+    // publishEvent 동작을 수행한다.
 
     private void publishEvent(String key, MetadataStoreEventType type, Object value) {
+        // 이벤트 발행 시각을 현재 시각으로 설정한다.
         publishEvent(key, type, value, clock.instant());
     }
+    // publishEvent 동작을 수행한다.
 
     private void publishEvent(String key, MetadataStoreEventType type, Object value, Instant when) {
+        // prefix 필터링은 watch 등록 시 래핑된 listener에서 수행한다.
         MetadataStoreEvent event = new MetadataStoreEvent(key, type, Optional.ofNullable(value), when);
         for (Consumer<MetadataStoreEvent> listener : listeners) {
             listener.accept(event);

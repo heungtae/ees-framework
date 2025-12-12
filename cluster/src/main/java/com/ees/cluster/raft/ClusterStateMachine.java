@@ -42,6 +42,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * Skeleton state machine that will apply Raft log entries to cluster services.
  */
 public class ClusterStateMachine extends BaseStateMachine {
+    // logger를 반환한다.
 
     private static final Logger log = LoggerFactory.getLogger(ClusterStateMachine.class);
     private static final long SNAPSHOT_VERSION = 1;
@@ -51,21 +52,42 @@ public class ClusterStateMachine extends BaseStateMachine {
     private final Clock clock;
     private final ClusterSnapshotStore snapshotStore;
     private final long snapshotThreshold;
+    // AtomicLong 동작을 수행한다.
     private final AtomicLong appliedSinceSnapshot = new AtomicLong();
     private final RaftStateMachineMetrics metrics;
     private final RebalanceSafeModeGuard safeModeGuard;
     private final long snapshotSizeThresholdBytes;
+    // AtomicLong 동작을 수행한다.
     private final AtomicLong appliedBytesSinceSnapshot = new AtomicLong();
+    /**
+     * 인스턴스를 생성한다.
+     * @param assignmentService 
+     * @param lockService 
+     */
 
     public ClusterStateMachine(RaftAssignmentService assignmentService, DistributedLockService lockService) {
         this(assignmentService, lockService, new FileClusterSnapshotStore(java.nio.file.Path.of("data/raft/snapshots")));
     }
+    /**
+     * 인스턴스를 생성한다.
+     * @param assignmentService 
+     * @param lockService 
+     * @param snapshotStore 
+     */
 
     public ClusterStateMachine(RaftAssignmentService assignmentService,
                                DistributedLockService lockService,
                                ClusterSnapshotStore snapshotStore) {
         this(assignmentService, lockService, snapshotStore, Clock.systemUTC(), 1_000L);
     }
+    /**
+     * 인스턴스를 생성한다.
+     * @param assignmentService 
+     * @param lockService 
+     * @param snapshotStore 
+     * @param clock 
+     * @param snapshotThreshold 
+     */
 
     public ClusterStateMachine(RaftAssignmentService assignmentService,
                                DistributedLockService lockService,
@@ -74,6 +96,17 @@ public class ClusterStateMachine extends BaseStateMachine {
                                long snapshotThreshold) {
         this(assignmentService, lockService, snapshotStore, clock, snapshotThreshold, 0L, new RaftStateMachineMetrics(), new RebalanceSafeModeGuard());
     }
+    /**
+     * 인스턴스를 생성한다.
+     * @param assignmentService 
+     * @param lockService 
+     * @param snapshotStore 
+     * @param clock 
+     * @param snapshotThreshold 
+     * @param snapshotSizeThresholdBytes 
+     * @param metrics 
+     * @param safeModeGuard 
+     */
 
     public ClusterStateMachine(RaftAssignmentService assignmentService,
                                DistributedLockService lockService,
@@ -92,6 +125,14 @@ public class ClusterStateMachine extends BaseStateMachine {
         this.metrics = Objects.requireNonNull(metrics, "metrics must not be null");
         this.safeModeGuard = Objects.requireNonNull(safeModeGuard, "safeModeGuard must not be null");
     }
+    /**
+     * forConfig를 수행한다.
+     * @param assignmentService 
+     * @param lockService 
+     * @param repository 
+     * @param config 
+     * @return 
+     */
 
     public static ClusterStateMachine forConfig(RaftAssignmentService assignmentService,
                                                 DistributedLockService lockService,
@@ -102,14 +143,28 @@ public class ClusterStateMachine extends BaseStateMachine {
                 config.getSnapshotThreshold(), config.getSnapshotSizeThresholdBytes(),
                 new RaftStateMachineMetrics(), new RebalanceSafeModeGuard());
     }
+    /**
+     * metrics를 수행한다.
+     * @return 
+     */
 
     public RaftStateMachineMetrics metrics() {
         return metrics;
     }
+    /**
+     * safeModeGuard를 수행한다.
+     * @return 
+     */
 
     public RebalanceSafeModeGuard safeModeGuard() {
         return safeModeGuard;
     }
+    /**
+     * initialize를 수행한다.
+     * @param server 
+     * @param groupId 
+     * @param storage 
+     */
 
     @Override
     public void initialize(RaftServer server, RaftGroupId groupId, RaftStorage storage) throws IOException {
@@ -120,6 +175,11 @@ public class ClusterStateMachine extends BaseStateMachine {
         loadSnapshot();
         log.info("Initialized ClusterStateMachine for group {}", groupId);
     }
+    /**
+     * applyTransaction를 수행한다.
+     * @param trx 
+     * @return 
+     */
 
     @Override
     public CompletableFuture<Message> applyTransaction(TransactionContext trx) {
@@ -144,6 +204,10 @@ public class ClusterStateMachine extends BaseStateMachine {
             return CompletableFuture.completedFuture(Message.valueOf("error:" + e.getClass().getSimpleName()));
         }
     }
+    /**
+     * takeSnapshot를 수행한다.
+     * @return 
+     */
 
     @Override
     public long takeSnapshot() throws IOException {
@@ -167,6 +231,9 @@ public class ClusterStateMachine extends BaseStateMachine {
         log.info("Taking snapshot at term={}, index={} (takenAt={})", term, logIndex, snapshot.takenAt());
         return logIndex;
     }
+    /**
+     * reinitialize를 수행한다.
+     */
 
     @Override
     public void reinitialize() throws IOException {
@@ -175,6 +242,7 @@ public class ClusterStateMachine extends BaseStateMachine {
         loadSnapshot();
         log.info("Reinitialized ClusterStateMachine for group {}", getGroupId());
     }
+    // extractLogData 동작을 수행한다.
 
     private byte[] extractLogData(TransactionContext trx) {
         if (trx.getLogEntry() == null || !trx.getLogEntry().hasStateMachineLogEntry()) {
@@ -182,6 +250,7 @@ public class ClusterStateMachine extends BaseStateMachine {
         }
         return trx.getLogEntry().getStateMachineLogEntry().getLogData().toByteArray();
     }
+    // handleCommand 동작을 수행한다.
 
     private CompletionStage<Void> handleCommand(RaftCommandEnvelope envelope) {
         switch (envelope.type()) {
@@ -214,6 +283,7 @@ public class ClusterStateMachine extends BaseStateMachine {
         }
         return java.util.concurrent.CompletableFuture.completedFuture(null);
     }
+    // maybeTriggerSnapshot 동작을 수행한다.
 
     private void maybeTriggerSnapshot() {
         boolean countMet = snapshotThreshold > 0 && appliedSinceSnapshot.incrementAndGet() >= snapshotThreshold;
@@ -259,22 +329,38 @@ public class ClusterStateMachine extends BaseStateMachine {
         log.info("Restored snapshot for group {} at term={}, index={}, takenAt={}", snapshot.groupId(),
                 snapshot.term(), snapshot.index(), snapshot.takenAt());
     }
+    /**
+     * close를 수행한다.
+     */
 
     @Override
     public void close() throws IOException {
         metrics.markStopped(clock.instant());
         super.close();
     }
+    /**
+     * enterSafeMode를 수행한다.
+     * @param reason 
+     */
 
     public void enterSafeMode(String reason) {
         safeModeGuard.enterSafeMode(reason);
         metrics.setSafeMode(true, reason);
     }
+    /**
+     * exitSafeMode를 수행한다.
+     */
 
     public void exitSafeMode() {
         safeModeGuard.exitSafeMode();
         metrics.setSafeMode(false, "");
     }
+    /**
+     * leaderProcessingGuard를 수행한다.
+     * @param leaderElectionService 
+     * @param nodeId 
+     * @return 
+     */
 
     public LeaderProcessingGuard leaderProcessingGuard(LeaderElectionService leaderElectionService, String nodeId) {
         return new LeaderProcessingGuard(leaderElectionService, groupIdAsString(), nodeId, safeModeGuard, metrics);

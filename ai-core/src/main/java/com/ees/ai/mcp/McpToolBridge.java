@@ -17,13 +17,21 @@ import java.util.function.Function;
  * Registers common MCP commands as AI tools and delegates execution to an MCP client.
  */
 public class McpToolBridge {
+    // logger를 반환한다.
 
     private static final Logger log = LoggerFactory.getLogger(McpToolBridge.class);
 
     private final McpClient mcpClient;
     private final AiToolRegistry aiToolRegistry;
+    // ObjectMapper 동작을 수행한다.
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final McpAuditService auditService;
+    /**
+     * 인스턴스를 생성한다.
+     * @param mcpClient 
+     * @param aiToolRegistry 
+     * @param auditService 
+     */
 
     public McpToolBridge(McpClient mcpClient, AiToolRegistry aiToolRegistry, McpAuditService auditService) {
         this.mcpClient = Objects.requireNonNull(mcpClient, "mcpClient must not be null");
@@ -31,6 +39,10 @@ public class McpToolBridge {
         this.auditService = Objects.requireNonNull(auditService, "auditService must not be null");
         registerDefaultTools();
     }
+    /**
+     * toolCallbacks를 수행한다.
+     * @return 
+     */
 
     public List<org.springframework.ai.tool.ToolCallback> toolCallbacks() {
         return List.of(
@@ -60,6 +72,12 @@ public class McpToolBridge {
                 mcpClient.releaseLock((String) args.get("name")))
         );
     }
+    /**
+     * invoke를 수행한다.
+     * @param toolName 
+     * @param args 
+     * @return 
+     */
 
     public String invoke(String toolName, Map<String, Object> args) {
         log.info("Invoking MCP tool: {} args={}", toolName, args);
@@ -97,6 +115,7 @@ public class McpToolBridge {
             throw ex;
         }
     }
+    // asLong 동작을 수행한다.
 
     private long asLong(Object value, long defaultValue) {
         if (value instanceof Number number) {
@@ -111,6 +130,7 @@ public class McpToolBridge {
         }
         return defaultValue;
     }
+    // callback 동작을 수행한다.
 
     private org.springframework.ai.tool.ToolCallback callback(
         String name,
@@ -126,10 +146,19 @@ public class McpToolBridge {
                 .build();
 
         return new org.springframework.ai.tool.ToolCallback() {
+            /**
+             * toolDefinition를 반환한다.
+             * @return 
+             */
             @Override
             public org.springframework.ai.tool.definition.ToolDefinition getToolDefinition() {
                 return definition;
             }
+            /**
+             * call를 수행한다.
+             * @param request 
+             * @return 
+             */
 
             @Override
             public String call(String request) {
@@ -145,6 +174,7 @@ public class McpToolBridge {
             }
         };
     }
+    // parseArgs 동작을 수행한다.
 
     private Map<String, Object> parseArgs(String json) {
         if (json == null || json.isBlank()) {
@@ -156,30 +186,35 @@ public class McpToolBridge {
             throw new IllegalArgumentException("Invalid tool arguments", e);
         }
     }
+    // schemaNone 동작을 수행한다.
 
     private String schemaNone() {
         return """
             {"type":"object","properties":{}}
             """;
     }
+    // executionSchema 동작을 수행한다.
 
     private String executionSchema() {
         return """
             {"type":"object","properties":{"executionId":{"type":"string"}},"required":["executionId"]}
             """;
     }
+    // startWorkflowSchema 동작을 수행한다.
 
     private String startWorkflowSchema() {
         return """
             {"type":"object","properties":{"workflowId":{"type":"string"},"params":{"type":"object"}},"required":["workflowId"]}
             """;
     }
+    // assignKeySchema 동작을 수행한다.
 
     private String assignKeySchema() {
         return """
             {"type":"object","properties":{"group":{"type":"string"},"partition":{"type":"string"},"kind":{"type":"string"},"key":{"type":"string"},"appId":{"type":"string"}},"required":["group","kind","key","appId"]}
             """;
     }
+    // resolveKind 동작을 수행한다.
 
     private String resolveKind(Map<String, Object> args) {
         Object provided = args.get("kind");
@@ -188,18 +223,21 @@ public class McpToolBridge {
         }
         return AssignmentService.DEFAULT_AFFINITY_KIND;
     }
+    // lockSchema 동작을 수행한다.
 
     private String lockSchema() {
         return """
             {"type":"object","properties":{"name":{"type":"string"},"ttlSeconds":{"type":"integer"}},"required":["name"]}
             """;
     }
+    // releaseLockSchema 동작을 수행한다.
 
     private String releaseLockSchema() {
         return """
             {"type":"object","properties":{"name":{"type":"string"}},"required":["name"]}
             """;
     }
+    // registerDefaultTools 동작을 수행한다.
 
     private void registerDefaultTools() {
         List.of(

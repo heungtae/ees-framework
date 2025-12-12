@@ -12,6 +12,11 @@ import java.util.Locale;
  */
 @FxPipelineStep("uppercase-message")
 public class UppercasePipelineStep implements PipelineStep<String, String> {
+    /**
+     * apply를 수행한다.
+     * @param context 
+     * @return 
+     */
 
     @Override
     public FxContext<String> apply(FxContext<String> context) {

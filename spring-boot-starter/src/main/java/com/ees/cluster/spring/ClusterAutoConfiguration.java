@@ -44,24 +44,44 @@ import java.time.Clock;
 @AutoConfiguration
 @EnableConfigurationProperties(ClusterProperties.class)
 public class ClusterAutoConfiguration {
+    /**
+     * metadataStore를 수행한다.
+     * @return 
+     */
 
     @Bean
     @ConditionalOnMissingBean
     public MetadataStore metadataStore() {
         return new InMemoryMetadataStore();
     }
+    /**
+     * clusterStateRepository를 수행한다.
+     * @param metadataStore 
+     * @return 
+     */
 
     @Bean
     @ConditionalOnMissingBean
     public ClusterStateRepository clusterStateRepository(MetadataStore metadataStore) {
         return new MetadataStoreClusterStateRepository(metadataStore);
     }
+    /**
+     * clusterMembershipProperties를 수행한다.
+     * @param properties 
+     * @return 
+     */
 
     @Bean
     @ConditionalOnMissingBean
     public ClusterMembershipProperties clusterMembershipProperties(ClusterProperties properties) {
         return new ClusterMembershipProperties(properties.getHeartbeatInterval(), properties.getHeartbeatTimeout());
     }
+    /**
+     * clusterMembershipService를 수행한다.
+     * @param repository 
+     * @param membershipProperties 
+     * @return 
+     */
 
     @Bean
     @ConditionalOnMissingBean
@@ -69,12 +89,23 @@ public class ClusterAutoConfiguration {
                                                              ClusterMembershipProperties membershipProperties) {
         return new DefaultClusterMembershipService(repository, membershipProperties);
     }
+    /**
+     * distributedLockService를 수행한다.
+     * @param repository 
+     * @return 
+     */
 
     @Bean
     @ConditionalOnMissingBean
     public DistributedLockService distributedLockService(ClusterStateRepository repository) {
         return new DefaultDistributedLockService(repository);
     }
+    /**
+     * clusterAssignmentService를 수행한다.
+     * @param properties 
+     * @param repository 
+     * @return 
+     */
 
     @Bean
     @ConditionalOnMissingBean(name = "clusterAssignmentService")
@@ -83,6 +114,11 @@ public class ClusterAutoConfiguration {
                 ? new RaftAssignmentService(repository, properties.getAssignmentTtl())
                 : new InMemoryAssignmentService();
     }
+    /**
+     * defaultAffinityKeyExtractor를 수행한다.
+     * @param properties 
+     * @return 
+     */
 
     @Bean
     @ConditionalOnMissingBean
@@ -90,12 +126,24 @@ public class ClusterAutoConfiguration {
         return new DefaultAffinityKeyExtractor<>(properties.getAssignmentAffinityKind(),
                 value -> value == null ? null : value.toString());
     }
+    /**
+     * kafkaAssignmentCoordinator를 수행한다.
+     * @param assignmentService 
+     * @return 
+     */
 
     @Bean
     @ConditionalOnMissingBean
     public KafkaAssignmentCoordinator kafkaAssignmentCoordinator(AssignmentService assignmentService) {
         return new KafkaAssignmentCoordinator(assignmentService);
     }
+    /**
+     * clusterAffinityKindMonitor를 수행한다.
+     * @param assignmentService 
+     * @param workflowEngine 
+     * @param workflowRuntime 
+     * @return 
+     */
 
     @Bean
     @ConditionalOnBean({WorkflowEngine.class, WorkflowRuntime.class})
@@ -106,6 +154,12 @@ public class ClusterAutoConfiguration {
         AffinityKindChangeHandler handler = AffinityKindChangeHandler.forRuntime(workflowEngine, workflowRuntime);
         return new ClusterAffinityKindMonitor(assignmentService, handler::onAffinityKindChanged);
     }
+    /**
+     * leaderElectionService를 수행한다.
+     * @param properties 
+     * @param repository 
+     * @return 
+     */
 
     @Bean
     @Primary
@@ -116,6 +170,11 @@ public class ClusterAutoConfiguration {
             case KAFKA -> new KafkaLeaderElectionService();
         };
     }
+    /**
+     * clusterNode를 수행한다.
+     * @param properties 
+     * @return 
+     */
 
     @Bean
     public ClusterNode clusterNode(ClusterProperties properties) {
@@ -123,6 +182,13 @@ public class ClusterAutoConfiguration {
         return new ClusterNode(properties.getNodeId(), properties.getHost(), properties.getPort(),
                 roles, properties.getZone(), java.util.Map.of(), "0.0.1");
     }
+    /**
+     * heartbeatMonitor를 수행한다.
+     * @param membershipService 
+     * @param properties 
+     * @param clusterNode 
+     * @return 
+     */
 
     @Bean
     @ConditionalOnProperty(prefix = "ees.cluster", name = "heartbeat-enabled", havingValue = "true", matchIfMissing = true)
@@ -131,6 +197,13 @@ public class ClusterAutoConfiguration {
                                              ClusterNode clusterNode) {
         return new HeartbeatMonitor(membershipService, properties, clusterNode);
     }
+    /**
+     * clusterHealthIndicator를 수행한다.
+     * @param membershipService 
+     * @param leaderElectionService 
+     * @param properties 
+     * @return 
+     */
 
     @Bean
     public HealthIndicator clusterHealthIndicator(ClusterMembershipService membershipService,
@@ -148,18 +221,34 @@ public class ClusterAutoConfiguration {
             return builder.build();
         };
     }
+    /**
+     * clusterMetricsRegistrar를 수행한다.
+     * @param membershipService 
+     * @param meterRegistry 
+     * @return 
+     */
 
     @Bean
     public ClusterMetricsRegistrar clusterMetricsRegistrar(ClusterMembershipService membershipService,
                                                            MeterRegistry meterRegistry) {
         return new ClusterMetricsRegistrar(membershipService, meterRegistry);
     }
+    /**
+     * raftMetricsRegistrar를 수행한다.
+     * @param metricsProvider 
+     * @return 
+     */
 
     @Bean
     @ConditionalOnBean(RaftStateMachineMetrics.class)
     public RaftMetricsRegistrar raftMetricsRegistrar(ObjectProvider<List<RaftStateMachineMetrics>> metricsProvider) {
         return new RaftMetricsRegistrar(metricsProvider.getIfAvailable(List::of));
     }
+    /**
+     * raftStateMachineHealthIndicator를 수행한다.
+     * @param metricsProvider 
+     * @return 
+     */
 
     @Bean
     @ConditionalOnBean(RaftStateMachineMetrics.class)

@@ -8,6 +8,10 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  */
 @SpringBootApplication
 public class FxFrameworkApplication {
+    /**
+     * main를 수행한다.
+     * @param args 
+     */
 
     public static void main(String[] args) {
         SpringApplication.run(FxFrameworkApplication.class, args);

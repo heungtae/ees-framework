@@ -9,6 +9,7 @@ import java.util.Objects;
  * TTL helper utilities shared by MetadataStore implementations.
  */
 public final class MetadataTtlUtils {
+    // 인스턴스를 생성한다.
 
     private MetadataTtlUtils() {
     }

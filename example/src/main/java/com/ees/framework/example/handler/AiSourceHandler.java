@@ -27,6 +27,11 @@ public class AiSourceHandler implements SourceHandler<String> {
 
     private final String classificationPrompt;
     private final Set<String> supportedSources;
+    /**
+     * 인스턴스를 생성한다.
+     * @param promptProperty 
+     * @param supportedSourcesProperty 
+     */
 
     public AiSourceHandler(
         @Value("${example.ai.classification-prompt:}") String promptProperty,
@@ -40,6 +45,11 @@ public class AiSourceHandler implements SourceHandler<String> {
             : supportedSourcesProperty;
         this.supportedSources = parseSupportedSources(sources);
     }
+    /**
+     * handle를 수행한다.
+     * @param context 
+     * @return 
+     */
 
     @Override
     public FxContext<String> handle(FxContext<String> context) {
@@ -53,12 +63,18 @@ public class AiSourceHandler implements SourceHandler<String> {
         );
         return new FxContext<>(context.command(), context.headers(), context.message(), meta, context.affinity());
     }
+    /**
+     * supports를 수행한다.
+     * @param context 
+     * @return 
+     */
 
     @Override
     public boolean supports(FxContext<?> context) {
         return context.message() != null
             && supportedSources.contains(context.message().sourceType());
     }
+    // parseSupportedSources 동작을 수행한다.
 
     private Set<String> parseSupportedSources(String csv) {
         return Stream.of(csv.split(","))

@@ -17,6 +17,11 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
 
+/**
+ * {@link ClusterStateRepository} 기반의 기본 멤버십 서비스 구현.
+ * <p>
+ * 노드 레코드를 저장소에 기록하고, 하트비트/타임아웃에 따라 상태를 전이시키며 이벤트를 발행한다.
+ */
 public class DefaultClusterMembershipService implements ClusterMembershipService {
 
     private static final String NODES_PREFIX = "cluster:nodes/";
@@ -26,11 +31,17 @@ public class DefaultClusterMembershipService implements ClusterMembershipService
     private final CopyOnWriteArrayList<Consumer<MembershipEvent>> listeners = new CopyOnWriteArrayList<>();
     private final Clock clock;
 
+    /**
+     * 시스템 UTC 시계를 사용해 생성한다.
+     */
     public DefaultClusterMembershipService(ClusterStateRepository repository,
                                            ClusterMembershipProperties properties) {
         this(repository, properties, Clock.systemUTC());
     }
 
+    /**
+     * 저장소/설정/시계를 지정해 생성한다.
+     */
     public DefaultClusterMembershipService(ClusterStateRepository repository,
                                            ClusterMembershipProperties properties,
                                            Clock clock) {
@@ -39,6 +50,7 @@ public class DefaultClusterMembershipService implements ClusterMembershipService
         this.clock = Objects.requireNonNull(clock, "clock must not be null");
     }
 
+    /** {@inheritDoc} */
     @Override
     public ClusterNodeRecord join(ClusterNode node) {
         Objects.requireNonNull(node, "node must not be null");
@@ -49,6 +61,7 @@ public class DefaultClusterMembershipService implements ClusterMembershipService
         return record;
     }
 
+    /** {@inheritDoc} */
     @Override
     public ClusterNodeRecord heartbeat(String nodeId) {
         Objects.requireNonNull(nodeId, "nodeId must not be null");
@@ -59,8 +72,10 @@ public class DefaultClusterMembershipService implements ClusterMembershipService
         }
         return updateHeartbeat(optional.get(), now);
     }
+    // updateHeartbeat 동작을 수행한다.
 
     private ClusterNodeRecord updateHeartbeat(ClusterNodeRecord record, Instant heartbeatTime) {
+        // 하트비트 수신 시 상태/시각을 갱신하고 TTL을 연장한다.
         ClusterNodeStatus newStatus = record.status() == ClusterNodeStatus.LEFT
                 ? ClusterNodeStatus.LEFT
                 : ClusterNodeStatus.UP;
@@ -70,6 +85,7 @@ public class DefaultClusterMembershipService implements ClusterMembershipService
         return updated;
     }
 
+    /** {@inheritDoc} */
     @Override
     public void leave(String nodeId) {
         Objects.requireNonNull(nodeId, "nodeId must not be null");
@@ -82,6 +98,7 @@ public class DefaultClusterMembershipService implements ClusterMembershipService
         });
     }
 
+    /** {@inheritDoc} */
     @Override
     public void remove(String nodeId) {
         Objects.requireNonNull(nodeId, "nodeId must not be null");
@@ -92,12 +109,14 @@ public class DefaultClusterMembershipService implements ClusterMembershipService
         }
     }
 
+    /** {@inheritDoc} */
     @Override
     public Optional<ClusterNodeRecord> findNode(String nodeId) {
         Objects.requireNonNull(nodeId, "nodeId must not be null");
         return repository.get(nodeKey(nodeId), ClusterNodeRecord.class);
     }
 
+    /** {@inheritDoc} */
     @Override
     public Map<String, ClusterNodeRecord> view() {
         Map<String, ClusterNodeRecord> view = new ConcurrentHashMap<>();
@@ -106,6 +125,7 @@ public class DefaultClusterMembershipService implements ClusterMembershipService
         return view;
     }
 
+    /** {@inheritDoc} */
     @Override
     public void detectTimeouts() {
         Instant now = clock.instant();
@@ -114,8 +134,10 @@ public class DefaultClusterMembershipService implements ClusterMembershipService
         repository.scan(NODES_PREFIX, ClusterNodeRecord.class)
             .forEach(record -> evaluateRecord(record, now, timeout, downThreshold));
     }
+    // evaluateRecord 동작을 수행한다.
 
     private void evaluateRecord(ClusterNodeRecord record, Instant now, Duration suspectAfter, Duration downAfter) {
+        // 마지막 하트비트 시각 기준으로 SUSPECT/DOWN 전이 여부를 평가한다.
         Instant last = record.lastHeartbeat();
         ClusterNodeStatus nextStatus = null;
         Instant suspectAt = last.plus(suspectAfter);
@@ -142,20 +164,27 @@ public class DefaultClusterMembershipService implements ClusterMembershipService
         emitEvent(new MembershipEvent(eventType, updated, now));
     }
 
+    /** {@inheritDoc} */
     @Override
     public void events(Consumer<MembershipEvent> consumer) {
         listeners.add(consumer);
     }
+    // ttl 동작을 수행한다.
 
     private Duration ttl() {
+        // 멤버십 레코드 TTL을 timeout*2 + interval로 계산한다.
         return properties.heartbeatTimeout().multipliedBy(2).plus(properties.heartbeatInterval());
     }
+    // nodeKey 동작을 수행한다.
 
     private String nodeKey(String nodeId) {
+        // 노드 ID를 저장소 키로 변환한다.
         return NODES_PREFIX + nodeId;
     }
+    // emitEvent 동작을 수행한다.
 
     private void emitEvent(MembershipEvent event) {
+        // 등록된 리스너들에게 멤버십 이벤트를 전달한다.
         for (Consumer<MembershipEvent> listener : listeners) {
             listener.accept(event);
         }

@@ -14,6 +14,10 @@ import java.util.Map;
 public class DefaultSourceRegistry implements SourceRegistry {
 
     private final Map<String, Source<?>> byType = new HashMap<>();
+    /**
+     * 인스턴스를 생성한다.
+     * @param sources 
+     */
 
     public DefaultSourceRegistry(List<Source<?>> sources) {
         for (Source<?> src : sources) {
@@ -23,6 +27,11 @@ public class DefaultSourceRegistry implements SourceRegistry {
             }
         }
     }
+    /**
+     * byType를 반환한다.
+     * @param type 
+     * @return 
+     */
 
     @Override
     public Source<?> getByType(String type) {

@@ -52,15 +52,29 @@ public class KafkaKTableMetadataStore implements MetadataStore, Closeable {
     private final String topic;
     private final MetadataSerializer serializer;
     private final Clock clock;
+    // ValueWithTtlSerde 동작을 수행한다.
     private final Serde<ValueWithTtl> valueSerde = new ValueWithTtlSerde();
     private final CopyOnWriteArrayList<Consumer<MetadataStoreEvent>> listeners = new CopyOnWriteArrayList<>();
+    // newKeySet 동작을 수행한다.
     private final Set<String> pendingExpiryKeys = ConcurrentHashMap.newKeySet();
     private final String storeName;
     private final StateAdapter stateAdapter;
+    /**
+     * 인스턴스를 생성한다.
+     * @param streamsConfig 
+     * @param topic 
+     */
 
     public KafkaKTableMetadataStore(Properties streamsConfig, String topic) {
         this(streamsConfig, topic, new JsonMetadataSerializer(), Clock.systemUTC(), false);
     }
+    /**
+     * 인스턴스를 생성한다.
+     * @param streamsConfig 
+     * @param topic 
+     * @param serializer 
+     * @param clock 
+     */
 
     public KafkaKTableMetadataStore(Properties streamsConfig, String topic, MetadataSerializer serializer, Clock clock) {
         this(streamsConfig, topic, serializer, clock, false);
@@ -72,6 +86,7 @@ public class KafkaKTableMetadataStore implements MetadataStore, Closeable {
     public static KafkaKTableMetadataStore inMemoryForTests(Properties streamsConfig, String topic, MetadataSerializer serializer, Clock clock) {
         return new KafkaKTableMetadataStore(streamsConfig, topic, serializer, clock, true);
     }
+    // 인스턴스를 생성한다.
 
     private KafkaKTableMetadataStore(Properties streamsConfig, String topic, MetadataSerializer serializer, Clock clock, boolean useTestDriver) {
         this.topic = Objects.requireNonNull(topic, "topic must not be null");
@@ -94,6 +109,13 @@ public class KafkaKTableMetadataStore implements MetadataStore, Closeable {
             this.stateAdapter = new KafkaStreamsStateAdapter(streams, kvStore, producer, topic);
         }
     }
+    /**
+     * put를 수행한다.
+     * @param key 
+     * @param value 
+     * @param ttl 
+     * @return 
+     */
 
     @Override
     public <T> boolean put(String key, T value, Duration ttl) {
@@ -105,6 +127,13 @@ public class KafkaKTableMetadataStore implements MetadataStore, Closeable {
         stateAdapter.send(key, stored);
         return true;
     }
+    /**
+     * putIfAbsent를 수행한다.
+     * @param key 
+     * @param value 
+     * @param ttl 
+     * @return 
+     */
 
     @Override
     public <T> boolean putIfAbsent(String key, T value, Duration ttl) {
@@ -118,6 +147,12 @@ public class KafkaKTableMetadataStore implements MetadataStore, Closeable {
         }
         return put(key, value, ttl);
     }
+    /**
+     * get를 수행한다.
+     * @param key 
+     * @param type 
+     * @return 
+     */
 
     @Override
     public <T> Optional<T> get(String key, Class<T> type) {
@@ -135,6 +170,11 @@ public class KafkaKTableMetadataStore implements MetadataStore, Closeable {
         T value = serializer.deserialize(stored.payload(), type);
         return Optional.ofNullable(value);
     }
+    /**
+     * delete를 수행한다.
+     * @param key 
+     * @return 
+     */
 
     @Override
     public boolean delete(String key) {
@@ -147,6 +187,14 @@ public class KafkaKTableMetadataStore implements MetadataStore, Closeable {
         stateAdapter.send(key, null);
         return true;
     }
+    /**
+     * compareAndSet를 수행한다.
+     * @param key 
+     * @param expectedValue 
+     * @param newValue 
+     * @param ttl 
+     * @return 
+     */
 
     @Override
     public <T> boolean compareAndSet(String key, T expectedValue, T newValue, Duration ttl) {
@@ -160,6 +208,12 @@ public class KafkaKTableMetadataStore implements MetadataStore, Closeable {
         }
         return put(key, newValue, ttl);
     }
+    /**
+     * scan를 수행한다.
+     * @param prefix 
+     * @param type 
+     * @return 
+     */
 
     @Override
     public <T> List<T> scan(String prefix, Class<T> type) {
@@ -182,6 +236,11 @@ public class KafkaKTableMetadataStore implements MetadataStore, Closeable {
         }
         return results;
     }
+    /**
+     * watch를 수행한다.
+     * @param prefix 
+     * @param consumer 
+     */
 
     @Override
     public void watch(String prefix, Consumer<MetadataStoreEvent> consumer) {
@@ -194,11 +253,15 @@ public class KafkaKTableMetadataStore implements MetadataStore, Closeable {
             }
         });
     }
+    /**
+     * close를 수행한다.
+     */
 
     @Override
     public void close() {
         stateAdapter.close();
     }
+    // handleStreamEvent 동작을 수행한다.
 
     private void handleStreamEvent(String key, ValueWithTtl valueWithTtl) {
         MetadataStoreEventType eventType;
@@ -214,11 +277,13 @@ public class KafkaKTableMetadataStore implements MetadataStore, Closeable {
         }
         publishEvent(key, eventType, decodedValue, clock.instant());
     }
+    // sendExpireTombstone 동작을 수행한다.
 
     private void sendExpireTombstone(String key, ValueWithTtl stored) {
         pendingExpiryKeys.add(key);
         stateAdapter.send(key, null);
     }
+    // purgeExpired 동작을 수행한다.
 
     private void purgeExpired() {
         try (KeyValueIterator<String, ValueWithTtl> iterator = stateAdapter.all()) {
@@ -230,6 +295,7 @@ public class KafkaKTableMetadataStore implements MetadataStore, Closeable {
             }
         }
     }
+    // buildTopology 동작을 수행한다.
 
     private Topology buildTopology(String topic) {
         StreamsBuilder builder = new StreamsBuilder();
@@ -242,6 +308,7 @@ public class KafkaKTableMetadataStore implements MetadataStore, Closeable {
         table.queryableStoreName();
         return builder.build();
     }
+    // waitForStore 동작을 수행한다.
 
     private ReadOnlyKeyValueStore<String, ValueWithTtl> waitForStore(KafkaStreams streams, String storeName) {
         int attempts = 0;
@@ -260,6 +327,7 @@ public class KafkaKTableMetadataStore implements MetadataStore, Closeable {
         }
         throw new IllegalStateException("Kafka Streams state store is not ready");
     }
+    // buildProducer 동작을 수행한다.
 
     private KafkaProducer<String, ValueWithTtl> buildProducer(Properties streamsConfig) {
         Properties producerProps = new Properties();
@@ -269,6 +337,7 @@ public class KafkaKTableMetadataStore implements MetadataStore, Closeable {
         producerProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, ValueWithTtlSerializer.class);
         return new KafkaProducer<>(producerProps);
     }
+    // publishEvent 동작을 수행한다.
 
     private void publishEvent(String key, MetadataStoreEventType type, Object value, Instant when) {
         MetadataStoreEvent event = new MetadataStoreEvent(key, type, Optional.ofNullable(value), when);
@@ -276,6 +345,7 @@ public class KafkaKTableMetadataStore implements MetadataStore, Closeable {
             listener.accept(event);
         }
     }
+    // toEpochMillis 동작을 수행한다.
 
     private Long toEpochMillis(Instant instant) {
         if (instant == null) {
@@ -283,6 +353,7 @@ public class KafkaKTableMetadataStore implements MetadataStore, Closeable {
         }
         return instant.toEpochMilli();
     }
+    // ensureTopicNameValid 동작을 수행한다.
 
     private void ensureTopicNameValid(String name) {
         if (name == null || name.isBlank()) {
@@ -315,16 +386,30 @@ public class KafkaKTableMetadataStore implements MetadataStore, Closeable {
             this.producer = producer;
             this.topic = topic;
         }
+        /**
+         * get를 수행한다.
+         * @param key 
+         * @return 
+         */
 
         @Override
         public ValueWithTtl get(String key) {
             return store.get(key);
         }
+        /**
+         * all를 수행한다.
+         * @return 
+         */
 
         @Override
         public KeyValueIterator<String, ValueWithTtl> all() {
             return store.all();
         }
+        /**
+         * send를 수행한다.
+         * @param key 
+         * @param value 
+         */
 
         @Override
         public void send(String key, ValueWithTtl value) {
@@ -334,6 +419,9 @@ public class KafkaKTableMetadataStore implements MetadataStore, Closeable {
                 throw new IllegalStateException("Failed to publish metadata to Kafka topic", e);
             }
         }
+        /**
+         * close를 수행한다.
+         */
 
         @Override
         public void close() {
@@ -354,21 +442,38 @@ public class KafkaKTableMetadataStore implements MetadataStore, Closeable {
             this.store = store;
             this.inputTopic = inputTopic;
         }
+        /**
+         * get를 수행한다.
+         * @param key 
+         * @return 
+         */
 
         @Override
         public ValueWithTtl get(String key) {
             return store.get(key);
         }
+        /**
+         * all를 수행한다.
+         * @return 
+         */
 
         @Override
         public KeyValueIterator<String, ValueWithTtl> all() {
             return store.all();
         }
+        /**
+         * send를 수행한다.
+         * @param key 
+         * @param value 
+         */
 
         @Override
         public void send(String key, ValueWithTtl value) {
             inputTopic.pipeInput(key, value, clock.instant());
         }
+        /**
+         * close를 수행한다.
+         */
 
         @Override
         public void close() {
@@ -386,6 +491,12 @@ public class KafkaKTableMetadataStore implements MetadataStore, Closeable {
     }
 
     private static final class ValueWithTtlSerializer implements Serializer<ValueWithTtl> {
+        /**
+         * serialize를 수행한다.
+         * @param topic 
+         * @param data 
+         * @return 
+         */
 
         @Override
         public byte[] serialize(String topic, ValueWithTtl data) {
@@ -405,11 +516,19 @@ public class KafkaKTableMetadataStore implements MetadataStore, Closeable {
     }
 
     private static final class ValueWithTtlSerde implements Serde<ValueWithTtl> {
+        /**
+         * serializer를 수행한다.
+         * @return 
+         */
 
         @Override
         public Serializer<ValueWithTtl> serializer() {
             return new ValueWithTtlSerializer();
         }
+        /**
+         * deserializer를 수행한다.
+         * @return 
+         */
 
         @Override
         public org.apache.kafka.common.serialization.Deserializer<ValueWithTtl> deserializer() {

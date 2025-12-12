@@ -38,6 +38,18 @@ public record ClusterSnapshot(
         assignments = Map.copyOf(assignments);
         keyAssignments = Map.copyOf(keyAssignments);
     }
+    /**
+     * create를 수행한다.
+     * @param formatVersion 
+     * @param groupId 
+     * @param term 
+     * @param index 
+     * @param takenAt 
+     * @param locks 
+     * @param assignments 
+     * @param keyAssignments 
+     * @return 
+     */
 
     @JsonCreator
     public static ClusterSnapshot create(@JsonProperty("formatVersion") long formatVersion,
@@ -51,6 +63,7 @@ public record ClusterSnapshot(
         Map<Integer, Map<String, Map<String, KeyAssignment>>> normalized = normalizeKeyAssignments(keyAssignments);
         return new ClusterSnapshot(formatVersion, groupId, term, index, takenAt, locks, assignments, normalized);
     }
+    // normalizeKeyAssignments 동작을 수행한다.
 
     @SuppressWarnings("unchecked")
     private static Map<Integer, Map<String, Map<String, KeyAssignment>>> normalizeKeyAssignments(Map<Integer, ?> raw) {
@@ -96,6 +109,7 @@ public record ClusterSnapshot(
         });
         return normalized;
     }
+    // convertAssignment 동작을 수행한다.
 
     private static KeyAssignment convertAssignment(Object assignment, Object key, Integer partition) {
         if (assignment instanceof KeyAssignment typed) {

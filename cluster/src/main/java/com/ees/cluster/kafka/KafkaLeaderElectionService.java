@@ -23,14 +23,31 @@ public class KafkaLeaderElectionService implements LeaderElectionService {
     private final ConcurrentHashMap<String, LeaderInfo> leaders = new ConcurrentHashMap<>();
     private final CopyOnWriteArrayList<Consumer<LeaderInfo>> listeners = new CopyOnWriteArrayList<>();
     private final Clock clock;
+    /**
+     * KafkaLeaderElectionService를 수행한다.
+     * @return 
+     */
 
     public KafkaLeaderElectionService() {
         this(Clock.systemUTC());
     }
+    /**
+     * KafkaLeaderElectionService를 수행한다.
+     * @param clock 
+     * @return 
+     */
 
     public KafkaLeaderElectionService(Clock clock) {
         this.clock = Objects.requireNonNull(clock, "clock must not be null");
     }
+    /**
+     * tryAcquireLeader를 수행한다.
+     * @param groupId 
+     * @param nodeId 
+     * @param mode 
+     * @param leaseDuration 
+     * @return 
+     */
 
     @Override
     public Optional<LeaderInfo> tryAcquireLeader(String groupId, String nodeId, LeaderElectionMode mode, Duration leaseDuration) {
@@ -46,6 +63,12 @@ public class KafkaLeaderElectionService implements LeaderElectionService {
         emit(updated);
         return Optional.of(updated);
     }
+    /**
+     * release를 수행한다.
+     * @param groupId 
+     * @param nodeId 
+     * @return 
+     */
 
     @Override
     public boolean release(String groupId, String nodeId) {
@@ -58,6 +81,11 @@ public class KafkaLeaderElectionService implements LeaderElectionService {
         }
         return false;
     }
+    /**
+     * leader를 반환한다.
+     * @param groupId 
+     * @return 
+     */
 
     @Override
     public Optional<LeaderInfo> getLeader(String groupId) {
@@ -72,6 +100,11 @@ public class KafkaLeaderElectionService implements LeaderElectionService {
         }
         return Optional.of(current);
     }
+    /**
+     * watch를 수행한다.
+     * @param groupId 
+     * @param consumer 
+     */
 
     @Override
     public void watch(String groupId, Consumer<LeaderInfo> consumer) {
@@ -83,11 +116,13 @@ public class KafkaLeaderElectionService implements LeaderElectionService {
             }
         });
     }
+    // expired 여부를 반환한다.
 
     private boolean isExpired(LeaderInfo info) {
         Instant now = clock.instant();
         return !info.leaseExpiresAt().isAfter(now);
     }
+    // emit 동작을 수행한다.
 
     private void emit(LeaderInfo info) {
         for (Consumer<LeaderInfo> listener : listeners) {

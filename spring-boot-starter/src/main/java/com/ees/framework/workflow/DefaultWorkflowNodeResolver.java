@@ -25,6 +25,14 @@ public class DefaultWorkflowNodeResolver implements WorkflowNodeResolver {
     private final PipelineStepRegistry pipelineStepRegistry;
     private final SinkHandlerRegistry sinkHandlerRegistry;
     private final SinkRegistry sinkRegistry;
+    /**
+     * 인스턴스를 생성한다.
+     * @param sourceRegistry 
+     * @param sourceHandlerRegistry 
+     * @param pipelineStepRegistry 
+     * @param sinkHandlerRegistry 
+     * @param sinkRegistry 
+     */
 
     public DefaultWorkflowNodeResolver(
         SourceRegistry sourceRegistry,
@@ -39,6 +47,11 @@ public class DefaultWorkflowNodeResolver implements WorkflowNodeResolver {
         this.sinkHandlerRegistry = sinkHandlerRegistry;
         this.sinkRegistry = sinkRegistry;
     }
+    /**
+     * resolve를 수행한다.
+     * @param node 
+     * @return 
+     */
 
     @Override
     public Object resolve(WorkflowNodeDefinition node) {

@@ -9,6 +9,7 @@ import java.util.function.Consumer;
  * 그래프 기반 Workflow 정의 DSL.
  */
 public final class WorkflowGraphDsl {
+    // 인스턴스를 생성한다.
 
     private WorkflowGraphDsl() {
     }

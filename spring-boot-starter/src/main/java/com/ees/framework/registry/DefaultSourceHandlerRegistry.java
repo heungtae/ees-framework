@@ -14,6 +14,10 @@ import java.util.Map;
 public class DefaultSourceHandlerRegistry implements SourceHandlerRegistry {
 
     private final Map<String, SourceHandler<?>> byName = new HashMap<>();
+    /**
+     * 인스턴스를 생성한다.
+     * @param handlers 
+     */
 
     public DefaultSourceHandlerRegistry(List<SourceHandler<?>> handlers) {
         for (SourceHandler<?> h : handlers) {
@@ -23,6 +27,11 @@ public class DefaultSourceHandlerRegistry implements SourceHandlerRegistry {
             }
         }
     }
+    /**
+     * byName를 반환한다.
+     * @param name 
+     * @return 
+     */
 
     @Override
     public SourceHandler<?> getByName(String name) {

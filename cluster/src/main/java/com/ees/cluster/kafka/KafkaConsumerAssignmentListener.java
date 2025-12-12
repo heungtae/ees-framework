@@ -23,14 +23,35 @@ public class KafkaConsumerAssignmentListener implements ConsumerRebalanceListene
     private final String nodeId;
     private final Clock clock;
     private final Map<String, java.util.List<String>> defaultAffinities;
+    /**
+     * 인스턴스를 생성한다.
+     * @param assignmentService 
+     * @param groupId 
+     * @param nodeId 
+     */
 
     public KafkaConsumerAssignmentListener(AssignmentService assignmentService, String groupId, String nodeId) {
         this(assignmentService, groupId, nodeId, Clock.systemUTC());
     }
+    /**
+     * 인스턴스를 생성한다.
+     * @param assignmentService 
+     * @param groupId 
+     * @param nodeId 
+     * @param clock 
+     */
 
     public KafkaConsumerAssignmentListener(AssignmentService assignmentService, String groupId, String nodeId, Clock clock) {
         this(assignmentService, groupId, nodeId, clock, Map.of());
     }
+    /**
+     * 인스턴스를 생성한다.
+     * @param assignmentService 
+     * @param groupId 
+     * @param nodeId 
+     * @param clock 
+     * @param defaultAffinities 
+     */
 
     public KafkaConsumerAssignmentListener(AssignmentService assignmentService, String groupId, String nodeId,
                                            Clock clock, Map<String, java.util.List<String>> defaultAffinities) {
@@ -41,6 +62,10 @@ public class KafkaConsumerAssignmentListener implements ConsumerRebalanceListene
         this.defaultAffinities = Collections.unmodifiableMap(new java.util.HashMap<>(
                 Objects.requireNonNull(defaultAffinities, "defaultAffinities must not be null")));
     }
+    /**
+     * onPartitionsRevoked를 수행한다.
+     * @param partitions 
+     */
 
     @Override
     public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
@@ -48,6 +73,10 @@ public class KafkaConsumerAssignmentListener implements ConsumerRebalanceListene
             partitions.stream().map(TopicPartition::partition).collect(Collectors.toList()),
             "kafka-rebalance");
     }
+    /**
+     * onPartitionsAssigned를 수행한다.
+     * @param partitions 
+     */
 
     @Override
     public void onPartitionsAssigned(Collection<TopicPartition> partitions) {

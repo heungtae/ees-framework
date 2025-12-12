@@ -17,16 +17,30 @@ public class InMemoryAiRateLimiter implements AiRateLimiter {
     private final Clock clock;
 
     private final Map<String, Window> windows = new ConcurrentHashMap<>();
+    /**
+     * 인스턴스를 생성한다.
+     * @param properties 
+     */
 
     public InMemoryAiRateLimiter(AiAgentProperties properties) {
         this(properties, Clock.systemUTC());
     }
+    /**
+     * 인스턴스를 생성한다.
+     * @param properties 
+     * @param clock 
+     */
 
     public InMemoryAiRateLimiter(AiAgentProperties properties, Clock clock) {
         this.requestsPerMinute = properties.getRateLimit().getRequestsPerMinute();
         this.tokensPerMinute = properties.getRateLimit().getTokensPerMinute();
         this.clock = clock;
     }
+    /**
+     * check를 수행한다.
+     * @param userId 
+     * @param estimatedTokens 
+     */
 
     @Override
     public void check(String userId, int estimatedTokens) {

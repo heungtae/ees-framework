@@ -16,9 +16,14 @@ import java.util.concurrent.CopyOnWriteArrayList;
 @FxSink("ai-demo-collector")
 @Component
 public class AiResultSink implements Sink<Object> {
+    // logger를 반환한다.
 
     private static final Logger log = LoggerFactory.getLogger(AiResultSink.class);
     private final List<FxContext<Object>> received = new CopyOnWriteArrayList<>();
+    /**
+     * write를 수행한다.
+     * @param context 
+     */
 
     @Override
     public void write(FxContext<Object> context) {
@@ -26,6 +31,10 @@ public class AiResultSink implements Sink<Object> {
         log.info("AI result collected payload={} aiResponse={}", context.message().payload(),
             context.meta().attributes().get("aiResponse"));
     }
+    /**
+     * received를 반환한다.
+     * @return 
+     */
 
     public List<FxContext<Object>> getReceived() {
         return List.copyOf(received);

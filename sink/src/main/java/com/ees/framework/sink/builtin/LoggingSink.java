@@ -12,8 +12,13 @@ import org.springframework.stereotype.Component;
 @FxSink("logging")
 @Component
 public class LoggingSink implements Sink<Object> {
+    // logger를 반환한다.
 
     private static final Logger log = LoggerFactory.getLogger(LoggingSink.class);
+    /**
+     * write를 수행한다.
+     * @param context 
+     */
 
     @Override
     public void write(FxContext<Object> context) {

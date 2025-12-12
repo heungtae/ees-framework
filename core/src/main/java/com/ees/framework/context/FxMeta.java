@@ -23,6 +23,10 @@ public record FxMeta(
     public FxMeta {
         attributes = attributes == null ? Collections.emptyMap() : Collections.unmodifiableMap(new HashMap<>(attributes));
     }
+    /**
+     * empty를 수행한다.
+     * @return 
+     */
 
     public static FxMeta empty() {
         return new FxMeta(null, null, 0, Collections.emptyMap());

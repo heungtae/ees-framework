@@ -13,6 +13,11 @@ import java.time.Instant;
 @FxPipelineStep("enrich-header")
 @Component
 public class HeaderEnrichmentStep implements PipelineStep<Object, Object> {
+    /**
+     * apply를 수행한다.
+     * @param context 
+     * @return 
+     */
 
     @Override
     public FxContext<Object> apply(FxContext<Object> context) {

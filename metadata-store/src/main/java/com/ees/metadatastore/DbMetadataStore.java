@@ -27,10 +27,22 @@ public class DbMetadataStore implements MetadataStore {
     private final Clock clock;
     private final CopyOnWriteArrayList<Consumer<MetadataStoreEvent>> listeners = new CopyOnWriteArrayList<>();
     private final String table;
+    /**
+     * 인스턴스를 생성한다.
+     * @param dataSource 
+     * @param table 
+     */
 
     public DbMetadataStore(DataSource dataSource, String table) {
         this(dataSource, table, new JsonMetadataSerializer(), Clock.systemUTC());
     }
+    /**
+     * 인스턴스를 생성한다.
+     * @param dataSource 
+     * @param table 
+     * @param serializer 
+     * @param clock 
+     */
 
     public DbMetadataStore(DataSource dataSource, String table, MetadataSerializer serializer, Clock clock) {
         this.dataSource = Objects.requireNonNull(dataSource, "dataSource must not be null");
@@ -38,6 +50,13 @@ public class DbMetadataStore implements MetadataStore {
         this.serializer = Objects.requireNonNull(serializer, "serializer must not be null");
         this.clock = Objects.requireNonNull(clock, "clock must not be null");
     }
+    /**
+     * put를 수행한다.
+     * @param key 
+     * @param value 
+     * @param ttl 
+     * @return 
+     */
 
     @Override
     public <T> boolean put(String key, T value, Duration ttl) {
@@ -65,6 +84,13 @@ public class DbMetadataStore implements MetadataStore {
             throw new IllegalStateException("Failed to put metadata", e);
         }
     }
+    /**
+     * putIfAbsent를 수행한다.
+     * @param key 
+     * @param value 
+     * @param ttl 
+     * @return 
+     */
 
     @Override
     public <T> boolean putIfAbsent(String key, T value, Duration ttl) {
@@ -77,6 +103,12 @@ public class DbMetadataStore implements MetadataStore {
         }
         return put(key, value, ttl);
     }
+    /**
+     * get를 수행한다.
+     * @param key 
+     * @param type 
+     * @return 
+     */
 
     @Override
     public <T> Optional<T> get(String key, Class<T> type) {
@@ -104,6 +136,11 @@ public class DbMetadataStore implements MetadataStore {
             throw new IllegalStateException("Failed to get metadata", e);
         }
     }
+    /**
+     * delete를 수행한다.
+     * @param key 
+     * @return 
+     */
 
     @Override
     public boolean delete(String key) {
@@ -121,6 +158,14 @@ public class DbMetadataStore implements MetadataStore {
             throw new IllegalStateException("Failed to delete metadata", e);
         }
     }
+    /**
+     * compareAndSet를 수행한다.
+     * @param key 
+     * @param expectedValue 
+     * @param newValue 
+     * @param ttl 
+     * @return 
+     */
 
     @Override
     public <T> boolean compareAndSet(String key, T expectedValue, T newValue, Duration ttl) {
@@ -134,6 +179,12 @@ public class DbMetadataStore implements MetadataStore {
         }
         return put(key, newValue, ttl);
     }
+    /**
+     * scan를 수행한다.
+     * @param prefix 
+     * @param type 
+     * @return 
+     */
 
     @Override
     public <T> List<T> scan(String prefix, Class<T> type) {
@@ -161,6 +212,11 @@ public class DbMetadataStore implements MetadataStore {
             throw new IllegalStateException("Failed to scan metadata", e);
         }
     }
+    /**
+     * watch를 수행한다.
+     * @param prefix 
+     * @param consumer 
+     */
 
     @Override
     public void watch(String prefix, Consumer<MetadataStoreEvent> consumer) {
@@ -173,6 +229,7 @@ public class DbMetadataStore implements MetadataStore {
             }
         });
     }
+    // purgeExpired 동작을 수행한다.
 
     private void purgeExpired() {
         String sql = "DELETE FROM %s WHERE expires_at IS NOT NULL AND expires_at <= ?".formatted(table);
@@ -184,6 +241,7 @@ public class DbMetadataStore implements MetadataStore {
             throw new IllegalStateException("Failed to purge expired metadata", e);
         }
     }
+    // publishEvent 동작을 수행한다.
 
     private void publishEvent(String key, MetadataStoreEventType type, Object value) {
         MetadataStoreEvent event = new MetadataStoreEvent(key, type, Optional.ofNullable(value), clock.instant());

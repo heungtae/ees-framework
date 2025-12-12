@@ -17,12 +17,18 @@ public class ClusterAffinityKindMonitor {
     private final AssignmentService assignmentService;
     private final Consumer<String> affinityKindConsumer;
     private final AtomicReference<String> lastKind = new AtomicReference<>();
+    /**
+     * 인스턴스를 생성한다.
+     * @param assignmentService 
+     * @param affinityKindConsumer 
+     */
 
     public ClusterAffinityKindMonitor(AssignmentService assignmentService, Consumer<String> affinityKindConsumer) {
         this.assignmentService = Objects.requireNonNull(assignmentService, "assignmentService must not be null");
         this.affinityKindConsumer = Objects.requireNonNull(affinityKindConsumer, "affinityKindConsumer must not be null");
         this.assignmentService.topologyEvents(this::onTopologyEvent);
     }
+    // onTopologyEvent 동작을 수행한다.
 
     private void onTopologyEvent(TopologyEvent event) {
         if (event.assignment() != null) {
@@ -31,10 +37,12 @@ public class ClusterAffinityKindMonitor {
             emitIfChanged(event.keyAssignment().kind());
         }
     }
+    // resolveKindFromAssignment 동작을 수행한다.
 
     private String resolveKindFromAssignment(Assignment assignment) {
         return assignment.affinities().keySet().stream().findFirst().orElse(null);
     }
+    // emitIfChanged 동작을 수행한다.
 
     private void emitIfChanged(String kind) {
         if (kind == null) {

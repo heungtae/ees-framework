@@ -6,6 +6,7 @@ package com.ees.cluster.model;
 public final class AffinityKeys {
 
     public static final String DEFAULT = "equipmentId";
+    // 인스턴스를 생성한다.
 
     private AffinityKeys() {
     }

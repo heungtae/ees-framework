@@ -27,15 +27,32 @@ public class RaftLeaderElectionService implements LeaderElectionService {
     private final ClusterStateRepository repository;
     private final Clock clock;
     private final CopyOnWriteArrayList<Consumer<LeaderInfo>> listeners = new CopyOnWriteArrayList<>();
+    /**
+     * 인스턴스를 생성한다.
+     * @param repository 
+     */
 
     public RaftLeaderElectionService(ClusterStateRepository repository) {
         this(repository, Clock.systemUTC());
     }
+    /**
+     * 인스턴스를 생성한다.
+     * @param repository 
+     * @param clock 
+     */
 
     public RaftLeaderElectionService(ClusterStateRepository repository, Clock clock) {
         this.repository = Objects.requireNonNull(repository, "repository must not be null");
         this.clock = Objects.requireNonNull(clock, "clock must not be null");
     }
+    /**
+     * tryAcquireLeader를 수행한다.
+     * @param groupId 
+     * @param nodeId 
+     * @param mode 
+     * @param leaseDuration 
+     * @return 
+     */
 
     @Override
     public Optional<LeaderInfo> tryAcquireLeader(String groupId, String nodeId, LeaderElectionMode mode, Duration leaseDuration) {
@@ -64,6 +81,12 @@ public class RaftLeaderElectionService implements LeaderElectionService {
         }
         return Optional.empty();
     }
+    /**
+     * release를 수행한다.
+     * @param groupId 
+     * @param nodeId 
+     * @return 
+     */
 
     @Override
     public boolean release(String groupId, String nodeId) {
@@ -76,6 +99,11 @@ public class RaftLeaderElectionService implements LeaderElectionService {
         repository.delete(leaderKey(groupId));
         return true;
     }
+    /**
+     * leader를 반환한다.
+     * @param groupId 
+     * @return 
+     */
 
     @Override
     public Optional<LeaderInfo> getLeader(String groupId) {
@@ -88,6 +116,11 @@ public class RaftLeaderElectionService implements LeaderElectionService {
         }
         return optional;
     }
+    /**
+     * watch를 수행한다.
+     * @param groupId 
+     * @param consumer 
+     */
 
     @Override
     public void watch(String groupId, Consumer<LeaderInfo> consumer) {
@@ -107,14 +140,17 @@ public class RaftLeaderElectionService implements LeaderElectionService {
             }
         });
     }
+    // leaderKey 동작을 수행한다.
 
     private String leaderKey(String groupId) {
         return LEADER_PREFIX + groupId;
     }
+    // expired 여부를 반환한다.
 
     private boolean isExpired(LeaderInfo info, Instant now) {
         return !info.leaseExpiresAt().isAfter(now);
     }
+    // emit 동작을 수행한다.
 
     private void emit(LeaderInfo info) {
         for (Consumer<LeaderInfo> listener : listeners) {

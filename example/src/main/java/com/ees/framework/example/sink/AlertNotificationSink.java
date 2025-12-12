@@ -16,10 +16,15 @@ import java.util.concurrent.CopyOnWriteArrayList;
 @FxSink("alert-notification")
 @Component
 public class AlertNotificationSink implements Sink<String> {
+    // logger를 반환한다.
 
     private static final Logger log = LoggerFactory.getLogger(AlertNotificationSink.class);
 
     private final List<FxContext<String>> alerts = new CopyOnWriteArrayList<>();
+    /**
+     * write를 수행한다.
+     * @param context 
+     */
 
     @Override
     public void write(FxContext<String> context) {

@@ -12,6 +12,7 @@ import java.util.function.Consumer;
  * 선형(리스트 기반) Workflow 정의를 위한 DSL.
  */
 public final class WorkflowDsl {
+    // 인스턴스를 생성한다.
 
     private WorkflowDsl() {
     }

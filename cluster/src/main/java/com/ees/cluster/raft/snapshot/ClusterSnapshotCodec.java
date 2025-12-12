@@ -11,15 +11,22 @@ import java.util.Objects;
  * can be handled gracefully.
  */
 public final class ClusterSnapshotCodec {
+    // ObjectMapper 동작을 수행한다.
 
     private static final ObjectMapper mapper = new ObjectMapper();
 
     static {
         mapper.findAndRegisterModules();
     }
+    // 인스턴스를 생성한다.
 
     private ClusterSnapshotCodec() {
     }
+    /**
+     * serialize를 수행한다.
+     * @param snapshot 
+     * @return 
+     */
 
     public static byte[] serialize(ClusterSnapshot snapshot) {
         Objects.requireNonNull(snapshot, "snapshot must not be null");
@@ -29,6 +36,11 @@ public final class ClusterSnapshotCodec {
             throw new IllegalArgumentException("Failed to serialize snapshot", e);
         }
     }
+    /**
+     * deserialize를 수행한다.
+     * @param data 
+     * @return 
+     */
 
     public static ClusterSnapshot deserialize(byte[] data) throws IOException {
         Objects.requireNonNull(data, "data must not be null");

@@ -29,7 +29,11 @@ public class AiWorkflowSource implements Source<Object> {
     private final List<String> tasks;
     private final FxCommand command;
     private final String systemPrompt;
+    // AtomicInteger 동작을 수행한다.
     private final AtomicInteger sequence = new AtomicInteger();
+    /**
+     * 인스턴스를 생성한다.
+     */
 
     public AiWorkflowSource() {
         this(
@@ -40,12 +44,21 @@ public class AiWorkflowSource implements Source<Object> {
             "너는 SRE/개발 리더를 위한 작업 요약가다. 입력된 문장을 간결히 요약하고, 반드시 한 줄 액션 아이템을 제시하라."
         );
     }
+    /**
+     * 인스턴스를 생성한다.
+     * @param tasks 
+     * @param systemPrompt 
+     */
 
     public AiWorkflowSource(List<String> tasks, String systemPrompt) {
         this.tasks = List.copyOf(tasks);
         this.systemPrompt = systemPrompt;
         this.command = FxCommand.of("ai-demo-ingest");
     }
+    /**
+     * read를 수행한다.
+     * @return 
+     */
 
     @Override
     public Iterable<FxContext<Object>> read() {
@@ -53,6 +66,7 @@ public class AiWorkflowSource implements Source<Object> {
             .map(this::buildContext)
             .toList();
     }
+    // buildContext 동작을 수행한다.
 
     private FxContext<Object> buildContext(String task) {
         FxHeaders headers = FxHeaders.empty()

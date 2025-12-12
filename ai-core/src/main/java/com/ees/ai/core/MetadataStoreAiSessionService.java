@@ -17,11 +17,21 @@ public class MetadataStoreAiSessionService implements AiSessionService {
 
     private final MetadataStore metadataStore;
     private final Duration ttl;
+    /**
+     * 인스턴스를 생성한다.
+     * @param metadataStore 
+     * @param ttl 
+     */
 
     public MetadataStoreAiSessionService(MetadataStore metadataStore, Duration ttl) {
         this.metadataStore = metadataStore;
         this.ttl = ttl == null ? Duration.ZERO : ttl;
     }
+    /**
+     * load를 수행한다.
+     * @param sessionId 
+     * @return 
+     */
 
     @Override
     public AiSession load(String sessionId) {
@@ -30,6 +40,12 @@ public class MetadataStoreAiSessionService implements AiSessionService {
             .map(record -> new AiSession(sessionId, record.messages(), record.updatedAt()))
             .orElseGet(() -> new AiSession(sessionId, List.of(), Instant.now()));
     }
+    /**
+     * append를 수행한다.
+     * @param sessionId 
+     * @param message 
+     * @return 
+     */
 
     @Override
     public AiSession append(String sessionId, AiMessage message) {
@@ -43,6 +59,7 @@ public class MetadataStoreAiSessionService implements AiSessionService {
         metadataStore.put(key(sessionId), updated, ttl);
         return new AiSession(sessionId, messages, now);
     }
+    // key 동작을 수행한다.
 
     private String key(String sessionId) {
         if (sessionId == null || sessionId.isBlank()) {

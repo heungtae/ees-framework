@@ -23,6 +23,12 @@ import java.util.Map;
 @Configuration
 @ConditionalOnProperty(prefix = "sample.kafka", name = "enabled", havingValue = "true")
 public class KafkaClusterSampleConfiguration {
+    /**
+     * consumerFactory를 수행한다.
+     * @param bootstrapServers 
+     * @param groupId 
+     * @return 
+     */
 
     @Bean
     public ConsumerFactory<String, String> consumerFactory(
@@ -36,6 +42,12 @@ public class KafkaClusterSampleConfiguration {
         props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
         return new DefaultKafkaConsumerFactory<>(props);
     }
+    /**
+     * kafkaListenerContainerFactory를 수행한다.
+     * @param consumerFactory 
+     * @param rebalanceListener 
+     * @return 
+     */
 
     @Bean
     public ConcurrentKafkaListenerContainerFactory<String, String> kafkaListenerContainerFactory(
@@ -47,6 +59,13 @@ public class KafkaClusterSampleConfiguration {
         factory.getContainerProperties().setConsumerRebalanceListener(rebalanceListener);
         return factory;
     }
+    /**
+     * kafkaConsumerAssignmentListener를 수행한다.
+     * @param assignmentService 
+     * @param clusterProperties 
+     * @param groupId 
+     * @return 
+     */
 
     @Bean
     public KafkaConsumerAssignmentListener kafkaConsumerAssignmentListener(

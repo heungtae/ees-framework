@@ -10,22 +10,32 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+/**
+ * 로컬 노드의 join/heartbeat 전송과 타임아웃 감지를 스케줄링하는 헬퍼.
+ */
 public class HeartbeatMonitor implements AutoCloseable {
 
     private final ClusterMembershipService membershipService;
     private final ClusterMembershipProperties properties;
     private final ClusterNode localNode;
     private final ScheduledExecutorService scheduler;
+    // AtomicBoolean 동작을 수행한다.
     private final AtomicBoolean running = new AtomicBoolean(false);
     private ScheduledFuture<?> heartbeatLoop;
     private ScheduledFuture<?> detectionLoop;
 
+    /**
+     * 기본 스케줄러로 모니터를 생성한다.
+     */
     public HeartbeatMonitor(ClusterMembershipService membershipService,
                             ClusterMembershipProperties properties,
                             ClusterNode localNode) {
         this(membershipService, properties, localNode, Executors.newScheduledThreadPool(2));
     }
 
+    /**
+     * 스케줄러를 주입해 모니터를 생성한다.
+     */
     public HeartbeatMonitor(ClusterMembershipService membershipService,
                             ClusterMembershipProperties properties,
                             ClusterNode localNode,
@@ -36,6 +46,9 @@ public class HeartbeatMonitor implements AutoCloseable {
         this.scheduler = Objects.requireNonNull(scheduler, "scheduler must not be null");
     }
 
+    /**
+     * 모니터를 시작하고 로컬 노드를 join 처리한다.
+     */
     public void start() {
         if (!running.compareAndSet(false, true)) {
             return;
@@ -65,12 +78,18 @@ public class HeartbeatMonitor implements AutoCloseable {
             TimeUnit.MILLISECONDS
         );
     }
+    /**
+     * close를 수행한다.
+     */
 
     @Override
     public void close() {
         stop();
     }
 
+    /**
+     * 모니터를 중지하고 로컬 노드를 leave 처리한다.
+     */
     public void stop() {
         if (!running.compareAndSet(true, false)) {
             return;

@@ -31,6 +31,7 @@ public class StubAiAgentService implements AiAgentService {
             : summarize(user, prompt);
         return new AiResponse(request.sessionId(), content, false);
     }
+    // systemPrompt 동작을 수행한다.
 
     private String systemPrompt(AiRequest request) {
         return request.messages().stream()
@@ -39,6 +40,7 @@ public class StubAiAgentService implements AiAgentService {
             .findFirst()
             .orElse("system prompt missing");
     }
+    // userMessage 동작을 수행한다.
 
     private String userMessage(AiRequest request) {
         return request.messages().stream()
@@ -47,11 +49,13 @@ public class StubAiAgentService implements AiAgentService {
             .findFirst()
             .orElse("");
     }
+    // summarize 동작을 수행한다.
 
     private String summarize(String user, String prompt) {
         return "SUMMARY: " + user.toUpperCase()
             + " | ACTION: follow-up needed | PROMPT: " + prompt;
     }
+    // classify 동작을 수행한다.
 
     private String classify(String user) {
         String normalized = user.toLowerCase();

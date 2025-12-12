@@ -14,6 +14,10 @@ import java.util.Map;
 public class DefaultSinkHandlerRegistry implements SinkHandlerRegistry {
 
     private final Map<String, SinkHandler<?>> byName = new HashMap<>();
+    /**
+     * 인스턴스를 생성한다.
+     * @param handlers 
+     */
 
     public DefaultSinkHandlerRegistry(List<SinkHandler<?>> handlers) {
         for (SinkHandler<?> h : handlers) {
@@ -23,6 +27,11 @@ public class DefaultSinkHandlerRegistry implements SinkHandlerRegistry {
             }
         }
     }
+    /**
+     * byName를 반환한다.
+     * @param name 
+     * @return 
+     */
 
     @Override
     public SinkHandler<?> getByName(String name) {

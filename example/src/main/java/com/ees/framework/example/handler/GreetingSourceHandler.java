@@ -10,6 +10,11 @@ import com.ees.framework.handlers.SourceHandler;
  */
 @SourceHandlerComponent("greeting-source-handler")
 public class GreetingSourceHandler implements SourceHandler<String> {
+    /**
+     * handle를 수행한다.
+     * @param context 
+     * @return 
+     */
 
     @Override
     public FxContext<String> handle(FxContext<String> context) {
@@ -17,6 +22,11 @@ public class GreetingSourceHandler implements SourceHandler<String> {
             .with("handled-by", "GreetingSourceHandler");
         return new FxContext<>(context.command(), headers, context.message(), context.meta(), context.affinity());
     }
+    /**
+     * supports를 수행한다.
+     * @param context 
+     * @return 
+     */
 
     @Override
     public boolean supports(FxContext<?> context) {

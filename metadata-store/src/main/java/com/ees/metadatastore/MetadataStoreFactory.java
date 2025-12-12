@@ -10,6 +10,7 @@ import java.util.Properties;
  * Factory that selects a MetadataStore implementation based on configuration.
  */
 public final class MetadataStoreFactory {
+    // 인스턴스를 생성한다.
 
     private MetadataStoreFactory() {
     }

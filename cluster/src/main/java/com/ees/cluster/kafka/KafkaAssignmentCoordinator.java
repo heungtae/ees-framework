@@ -20,19 +20,41 @@ public class KafkaAssignmentCoordinator {
 
     private final AssignmentService assignmentService;
     private final Clock clock;
+    /**
+     * 인스턴스를 생성한다.
+     * @param assignmentService 
+     */
 
     public KafkaAssignmentCoordinator(AssignmentService assignmentService) {
         this(assignmentService, Clock.systemUTC());
     }
+    /**
+     * 인스턴스를 생성한다.
+     * @param assignmentService 
+     * @param clock 
+     */
 
     public KafkaAssignmentCoordinator(AssignmentService assignmentService, Clock clock) {
         this.assignmentService = Objects.requireNonNull(assignmentService, "assignmentService must not be null");
         this.clock = Objects.requireNonNull(clock, "clock must not be null");
     }
+    /**
+     * onPartitionsAssigned를 수행한다.
+     * @param groupId 
+     * @param nodeId 
+     * @param partitions 
+     */
 
     public void onPartitionsAssigned(String groupId, String nodeId, Collection<Integer> partitions) {
         onPartitionsAssigned(groupId, nodeId, partitions, Map.of());
     }
+    /**
+     * onPartitionsAssigned를 수행한다.
+     * @param groupId 
+     * @param nodeId 
+     * @param partitions 
+     * @param affinities 
+     */
 
     public void onPartitionsAssigned(String groupId, String nodeId, Collection<Integer> partitions,
                                      Map<String, java.util.List<String>> affinities) {
@@ -47,6 +69,12 @@ public class KafkaAssignmentCoordinator {
                                 (WorkflowHandoff) null, 0L, now))
                         .toList());
     }
+    /**
+     * onPartitionsRevoked를 수행한다.
+     * @param groupId 
+     * @param partitions 
+     * @param reason 
+     */
 
     public void onPartitionsRevoked(String groupId, Collection<Integer> partitions, String reason) {
         Objects.requireNonNull(groupId, "groupId must not be null");

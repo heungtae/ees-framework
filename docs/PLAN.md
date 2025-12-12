@@ -125,3 +125,12 @@
 - [x] 레포 전체 사용처(참조) 조사
 - [x] 삭제 후보 검증(영향 확인)
 - [x] 결론 기록: 현재 삭제 가능한 미사용 파일 없음
+
+# 작업 계획: 전체 모듈 Javadoc 정비(Private 메서드는 주석)
+- [x] 전 모듈 Javadoc 대상 스캔(퍼블릭 클래스/메서드 중심)
+- [x] core/handlers/source/pipeline/sink/workflow Javadoc 보강
+- [x] spring-boot-starter/ai-core/metadata-store/cluster/messaging Javadoc 보강
+- [x] example/application(필요 최소) Javadoc 보강
+- [x] private 메서드: 필요한 경우 주석으로 보강
+- [x] `mvn clean test`로 전체 검증
+- [x] 변경사항 커밋

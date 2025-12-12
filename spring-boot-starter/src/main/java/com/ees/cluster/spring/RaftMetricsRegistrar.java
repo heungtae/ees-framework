@@ -13,10 +13,18 @@ import java.util.Objects;
 public class RaftMetricsRegistrar implements MeterBinder {
 
     private final List<RaftStateMachineMetrics> metricsList;
+    /**
+     * 인스턴스를 생성한다.
+     * @param metricsList 
+     */
 
     public RaftMetricsRegistrar(List<RaftStateMachineMetrics> metricsList) {
         this.metricsList = Objects.requireNonNull(metricsList, "metricsList must not be null");
     }
+    /**
+     * bindTo를 수행한다.
+     * @param registry 
+     */
 
     @Override
     public void bindTo(MeterRegistry registry) {

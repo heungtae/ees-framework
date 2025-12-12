@@ -21,25 +21,45 @@ public class TimerSource implements Source<Long> {
 
     private final Duration period;
     private final FxCommand command;
+    /**
+     * 인스턴스를 생성한다.
+     */
 
     public TimerSource() {
         this(Duration.ofSeconds(1), FxCommand.of("timer"));
     }
+    /**
+     * 인스턴스를 생성한다.
+     * @param period 
+     * @param command 
+     */
 
     public TimerSource(Duration period, FxCommand command) {
         this.period = period;
         this.command = command;
     }
+    /**
+     * read를 수행한다.
+     * @return 
+     */
 
     @Override
     public Iterable<FxContext<Long>> read() {
         return () -> new Iterator<>() {
             private long seq = 0;
+            /**
+             * hasNext를 수행한다.
+             * @return 
+             */
 
             @Override
             public boolean hasNext() {
                 return true;
             }
+            /**
+             * next를 수행한다.
+             * @return 
+             */
 
             @Override
             public FxContext<Long> next() {

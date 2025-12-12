@@ -69,6 +69,7 @@ public class DefaultAffinityKeyResolver implements AffinityKeyResolver {
     public String defaultKind() {
         return defaultKind;
     }
+    // headerOrMeta 동작을 수행한다.
 
     private String headerOrMeta(FxContext<?> context, String key) {
         String fromHeaders = context.headers() != null ? context.headers().get(key) : null;

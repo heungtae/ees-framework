@@ -16,16 +16,25 @@ import java.util.concurrent.CopyOnWriteArrayList;
 @FxSink("example-collector")
 @Component
 public class CollectingSink implements Sink<String> {
+    // logger를 반환한다.
 
     private static final Logger log = LoggerFactory.getLogger(CollectingSink.class);
 
     private final List<FxContext<String>> received = new CopyOnWriteArrayList<>();
+    /**
+     * write를 수행한다.
+     * @param context 
+     */
 
     @Override
     public void write(FxContext<String> context) {
         received.add(context);
         log.info("Collected context command={} payload={}", context.command(), context.message().payload());
     }
+    /**
+     * received를 반환한다.
+     * @return 
+     */
 
     public List<FxContext<String>> getReceived() {
         return List.copyOf(received);
