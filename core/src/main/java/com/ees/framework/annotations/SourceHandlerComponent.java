@@ -5,8 +5,10 @@ import org.springframework.stereotype.Component;
 import java.lang.annotation.*;
 
 /**
- * SourceHandler 구현체에 붙이는 어노테이션.
- * value = handler 논리 이름.
+ * {@link com.ees.framework.handlers.SourceHandler} 구현체에 붙이는 어노테이션.
+ * <p>
+ * {@link com.ees.framework.registry.SourceHandlerRegistry}가 이 메타데이터를 이용해
+ * "handler name 문자열" → "SourceHandler 구현체"를 매핑한다.
  */
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
@@ -16,11 +18,19 @@ public @interface SourceHandlerComponent {
 
     /**
      * Handler 논리 이름.
+     * <p>
+     * 동일 애플리케이션 컨텍스트 내에서 값은 유일해야 한다.
+     *
+     * @return handler 이름
      */
     String value();
 
     /**
-     * 기본 순서. 필요시 정렬에 사용 가능.
+     * 기본 순서.
+     * <p>
+     * 필요 시 정렬에 사용할 수 있다.
+     *
+     * @return order 값(작을수록 먼저)
      */
     int order() default 0;
 }

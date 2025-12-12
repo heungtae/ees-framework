@@ -113,3 +113,9 @@
 - [x] example 모듈에 AI 분류 프롬프트/지원 소스 설정을 프로퍼티로 추가
 - [x] ALERT 분류 시 별도 알림 Sink로 전달하는 SinkHandler/Sink 구현
 - [x] 워크플로/테스트에 새로운 SinkHandler/Sink를 반영하고 검증
+
+# 작업 계획: core 모듈 Javadoc 정비
+- [x] core 모듈 대상 클래스 점검
+- [x] 컨텍스트/어노테이션/core API Javadoc 보강
+- [x] `mvn -pl core -am test`로 검증
+- [x] 변경사항 커밋
