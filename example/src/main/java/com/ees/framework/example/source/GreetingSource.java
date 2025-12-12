@@ -22,6 +22,10 @@ public class GreetingSource implements Source<String> {
 
     private static final String AFFINITY_KIND = "equipmentId";
     private static final String AFFINITY_VALUE = "example-greeting";
+    private static final String AI_PROMPT_KEY = "aiPrompt";
+    private static final String CLASSIFICATION_PROMPT =
+        "너는 수신된 문장을 GREETING, QUESTION, ALERT 중 하나로 분류하고 한 줄 이유를 제시한다. "
+            + "응답 형식: CLASSIFICATION: <LABEL>; REASON: <text>";
 
     private final List<String> greetings;
     private final FxCommand command;
@@ -48,7 +52,13 @@ public class GreetingSource implements Source<String> {
                     .with("greeting-sequence", String.valueOf(sequence.incrementAndGet()));
                 FxMessage<String> fxMessage = FxMessage.now("example-greeting", message);
                 FxAffinity affinity = FxAffinity.of(AFFINITY_KIND, AFFINITY_VALUE);
-                return new FxContext<>(command, headers, fxMessage, FxMeta.empty(), affinity);
+                FxMeta meta = new FxMeta(
+                    "example-greeting-source",
+                    "greeting-source",
+                    0,
+                    java.util.Map.of(AI_PROMPT_KEY, CLASSIFICATION_PROMPT)
+                );
+                return new FxContext<>(command, headers, fxMessage, meta, affinity);
             })
             .toList();
     }

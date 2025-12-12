@@ -16,19 +16,53 @@ import java.util.List;
 @ConditionalOnMissingBean(AiAgentService.class)
 public class StubAiAgentService implements AiAgentService {
 
+    /**
+     * 시스템 프롬프트와 사용자 입력을 읽어 분류/요약을 결정하고 deterministic 응답을 생성한다.
+     *
+     * @param request AI 요청 메시지(시스템/사용자)
+     * @return 고정된 형식의 AI 응답
+     */
     @Override
     public AiResponse chat(AiRequest request) {
-        String prompt = request.messages().stream()
+        String prompt = systemPrompt(request);
+        String user = userMessage(request);
+        String content = prompt.toLowerCase().contains("분류")
+            ? classify(user)
+            : summarize(user, prompt);
+        return new AiResponse(request.sessionId(), content, false);
+    }
+
+    private String systemPrompt(AiRequest request) {
+        return request.messages().stream()
             .filter(m -> "system".equalsIgnoreCase(m.role()))
             .map(AiMessage::content)
             .findFirst()
             .orElse("system prompt missing");
-        String user = request.messages().stream()
+    }
+
+    private String userMessage(AiRequest request) {
+        return request.messages().stream()
             .filter(m -> "user".equalsIgnoreCase(m.role()))
             .map(AiMessage::content)
             .findFirst()
             .orElse("");
-        String content = "SUMMARY: " + user.toUpperCase() + " | ACTION: follow-up needed | PROMPT: " + prompt;
-        return new AiResponse(request.sessionId(), content, false);
+    }
+
+    private String summarize(String user, String prompt) {
+        return "SUMMARY: " + user.toUpperCase()
+            + " | ACTION: follow-up needed | PROMPT: " + prompt;
+    }
+
+    private String classify(String user) {
+        String normalized = user.toLowerCase();
+        String label;
+        if (normalized.contains("error") || normalized.contains("fail")) {
+            label = "ALERT";
+        } else if (normalized.contains("?")) {
+            label = "QUESTION";
+        } else {
+            label = "GREETING";
+        }
+        return "CLASSIFICATION: " + label + "; REASON: stub-classifier";
     }
 }

@@ -92,3 +92,9 @@
 - [x] 컴포넌트 설계: Source/Handler/PipelineStep/Sink 구성 및 스텁 AiAgentService 결정
 - [x] 구현: 예시 AI 워크플로 컴포넌트/워크플로 정의 추가
 - [x] 테스트: 예시 워크플로 E2E 테스트 추가 및 실행
+
+# 작업 계획: Greeting 워크플로 AI 분류/트리아지 마무리
+- [ ] 현재 미커밋 변경사항 확인 및 정리(StubAiAgentService 변경 포함)
+- [ ] 트리아지 Sink 및 AI 분류 파이프라인 구성을 코드/테스트에 반영
+- [ ] example 모듈 테스트 실행으로 동작 검증
+- [ ] 필요한 추가 설명/문서화 여부 점검 및 최종 커밋 준비
