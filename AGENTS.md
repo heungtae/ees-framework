@@ -45,7 +45,7 @@
 
 ## Planning & Execution Rule
 - Before performing any task, the agent must create a clear and structured plan.
-- If the plan contains multiple steps or is complex, the agent must write the full plan in a Markdown document.
+- If the plan contains multiple steps or is complex, the agent must write the full plan in the docs/PLAN.md.
 - The plan must include a checklist so the user can review and track each step.
 - During execution, the agent must update the checklist whenever a step is completed.
 - If new steps become necessary during execution, the agent must add those steps to the existing plan document and update the checklist accordingly before continuing.

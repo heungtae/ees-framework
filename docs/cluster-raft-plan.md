@@ -67,17 +67,6 @@
    - 단위: StateMachine 명령 적용/스냅샷 라운드트립.
    - 통합: 3노드 임베디드 Ratis로 리더 전환, 로그 재플레이, 스냅샷 복구.
 
-## 체크리스트
-- [x] `RaftServerFactory`와 `ClusterStateMachine` 스켈레톤 작성, 설정 키 연결.
-- [x] 명령 DTO/JSON 직렬화 유틸 구현 및 락/할당 상태 적용 핸들러 작성.
-- [x] 스냅샷 take/load 흐름과 파일/db/kafka-ktable 스토어 플러그형 처리, 포맷 버전 명시.
-- [x] 메트릭·헬스 노출과 서버 시작/종료 훅 정리.
-- [x] 리더 전용 처리 규칙과 리밸런스 세이프 모드 가드 추가.
-- [x] StateMachine 단위 테스트와 3노드 임베디드 Ratis 통합 테스트 구성.
-- [x] 스냅샷/로그 크기 기반 자동 스냅샷 트리거 튜닝 및 운영 설정 검증.
-- [x] 리더/팔로워 상태 변경 이벤트·메트릭 강화.
-- [x] 네트워크 허용 환경에서 실 Ratis 통합 테스트 재검증 및 가이드 추가.
-
 ### 운영 가이드
 - 전체 Ratis 통합 테스트: 네트워크 허용 환경에서 `mvn -pl cluster -Dtest=EmbeddedRatisClusterTest#replicatesAssignmentsAndLocksAcrossPeers test` 실행. 로컬 소켓 불가 환경에서는 자동 스킵됨.
 - 스냅샷 트리거: `RaftServerConfig.snapshotThreshold`(엔트리 수)와 `snapshotSizeThresholdBytes`(로그 데이터 크기)를 조정해 운영 환경에 맞게 튜닝.
