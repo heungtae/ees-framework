@@ -49,6 +49,17 @@ public class WorkflowDefinition {
      */
     WorkflowEngine.BatchingOptions batchingOptions;
 
+    /**
+     * 모든 구성 요소를 명시적으로 설정하는 생성자.
+     *
+     * @param name 워크플로우 이름
+     * @param sourceType Source 타입 이름
+     * @param sourceHandlerChain 소스 핸들러 체인(없으면 null)
+     * @param pipelineSteps 순차 실행될 파이프라인 스텝 목록
+     * @param sinkHandlerChain 싱크 핸들러 체인(없으면 null)
+     * @param sinkType Sink 타입 이름
+     * @param batchingOptions 배치/백프레셔 옵션 (null 이면 기본값 사용)
+     */
     @Builder
     public WorkflowDefinition(
         String name,
@@ -70,6 +81,16 @@ public class WorkflowDefinition {
             : batchingOptions;
     }
 
+    /**
+     * 기본 배치 옵션을 사용해 워크플로 정의를 생성한다.
+     *
+     * @param name 워크플로우 이름
+     * @param sourceType Source 타입 이름
+     * @param sourceHandlerChain 소스 핸들러 체인(없으면 null)
+     * @param pipelineSteps 순차 실행될 파이프라인 스텝 목록
+     * @param sinkHandlerChain 싱크 핸들러 체인(없으면 null)
+     * @param sinkType Sink 타입 이름
+     */
     public WorkflowDefinition(
         String name,
         String sourceType,

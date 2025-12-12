@@ -42,14 +42,28 @@ public class WorkflowEngine {
     private final BatchingOptions batching;
     private final AffinityKeyResolver affinityKeyResolver;
 
+    /**
+     * 기본 배치 옵션과 DefaultAffinityKeyResolver 로 워크플로 엔진을 생성한다.
+     */
     public WorkflowEngine() {
         this(BatchingOptions.defaults(), new DefaultAffinityKeyResolver());
     }
 
+    /**
+     * 주어진 배치 옵션과 기본 affinity 리졸버로 워크플로 엔진을 생성한다.
+     *
+     * @param batching 배치/백프레셔 옵션
+     */
     public WorkflowEngine(BatchingOptions batching) {
         this(batching, new DefaultAffinityKeyResolver());
     }
 
+    /**
+     * 배치 옵션과 affinity 리졸버를 모두 주입받아 워크플로 엔진을 생성한다.
+     *
+     * @param batching 배치/백프레셔 옵션
+     * @param affinityKeyResolver affinity kind/value 를 계산할 리졸버
+     */
     public WorkflowEngine(BatchingOptions batching, AffinityKeyResolver affinityKeyResolver) {
         this.batching = Objects.requireNonNull(batching, "batching must not be null");
         this.affinityKeyResolver = Objects.requireNonNull(affinityKeyResolver, "affinityKeyResolver must not be null");
@@ -60,6 +74,7 @@ public class WorkflowEngine {
      *
      * @param graph    그래프 기반 워크플로우 정의
      * @param resolver 노드 -> 실제 Bean/구현체 resolve 담당
+     * @return 실행 가능한 Workflow 인스턴스
      */
     public Workflow createWorkflow(WorkflowGraphDefinition graph, WorkflowNodeResolver resolver) {
         return new DefaultWorkflow(graph, resolver, resolveBatching(graph), affinityKeyResolver);
@@ -73,7 +88,9 @@ public class WorkflowEngine {
     }
 
     /**
-     * Update the default affinity kind (e.g., equipmentId -> lotId) to align with cluster topology changes.
+     * 클러스터 토폴로지 변경 등에 맞춰 기본 affinity kind 를 갱신한다.
+     *
+     * @param kind 새 기본 affinity kind
      */
     public void updateAffinityKind(String kind) {
         if (this.affinityKeyResolver instanceof DefaultAffinityKeyResolver mutable) {
@@ -496,6 +513,11 @@ public class WorkflowEngine {
             Objects.requireNonNull(backpressurePolicy, "backpressurePolicy must not be null");
         }
 
+        /**
+         * 실행 엔진의 기본 배치/백프레셔 설정을 반환한다.
+         *
+         * @return 기본 BatchingOptions
+         */
         public static BatchingOptions defaults() {
             return new BatchingOptions(
                 256,

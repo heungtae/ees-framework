@@ -45,6 +45,16 @@ public class WorkflowGraphDefinition {
      */
     WorkflowEngine.BatchingOptions batchingOptions;
 
+    /**
+     * 그래프 워크플로우 정의를 구성하는 생성자.
+     *
+     * @param name 워크플로우 이름
+     * @param startNodeId 시작 노드 ID
+     * @param endNodeIds 종료 노드 ID 집합
+     * @param nodes 그래프 노드 목록
+     * @param edges 그래프 엣지 목록
+     * @param batchingOptions 배치/백프레셔 옵션 (null 이면 기본값 사용)
+     */
     @Builder
     public WorkflowGraphDefinition(
         String name,
@@ -64,6 +74,15 @@ public class WorkflowGraphDefinition {
             : batchingOptions;
     }
 
+    /**
+     * 기본 배치 옵션을 사용해 그래프 워크플로우 정의를 생성한다.
+     *
+     * @param name 워크플로우 이름
+     * @param startNodeId 시작 노드 ID
+     * @param endNodeIds 종료 노드 ID 집합
+     * @param nodes 그래프 노드 목록
+     * @param edges 그래프 엣지 목록
+     */
     public WorkflowGraphDefinition(
         String name,
         String startNodeId,

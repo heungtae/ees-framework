@@ -24,6 +24,12 @@ public class HandlerChainDefinition {
      */
     List<String> handlerNames;
 
+    /**
+     * 실행 모드와 핸들러 목록을 받아 체인 정의를 생성한다.
+     *
+     * @param mode 실행 모드
+     * @param handlerNames 핸들러 이름 목록
+     */
     @Builder
     public HandlerChainDefinition(ExecutionMode mode, @Singular List<String> handlerNames) {
         this.mode = Objects.requireNonNull(mode, "mode must not be null");

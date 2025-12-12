@@ -26,6 +26,13 @@ public class WorkflowEdgeDefinition {
      */
     String condition;
 
+    /**
+     * 출발/도착 노드와 조건을 지정해 엣지를 생성한다.
+     *
+     * @param fromNodeId 출발 노드 ID
+     * @param toNodeId 도착 노드 ID
+     * @param condition 연결 조건식(없으면 null)
+     */
     @Builder
     public WorkflowEdgeDefinition(String fromNodeId, String toNodeId, String condition) {
         this.fromNodeId = Objects.requireNonNull(fromNodeId, "fromNodeId must not be null");

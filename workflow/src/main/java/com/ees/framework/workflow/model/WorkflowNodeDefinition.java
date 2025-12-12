@@ -26,6 +26,13 @@ public class WorkflowNodeDefinition {
      */
     String refName;
 
+    /**
+     * 노드 ID, 종류, 참조 이름을 지정해 노드 정의를 생성한다.
+     *
+     * @param id 그래프 내 고유 ID
+     * @param kind 노드 종류
+     * @param refName 실제 구현체를 식별할 참조 이름
+     */
     @Builder
     public WorkflowNodeDefinition(String id, WorkflowNodeKind kind, String refName) {
         this.id = Objects.requireNonNull(id, "id must not be null");

@@ -13,6 +13,13 @@ import java.util.*;
  */
 public class WorkflowGraphValidator {
 
+    /**
+     * 워크플로 그래프 정의의 기본 무결성을 검증한다.
+     *
+     * @param graph 검증 대상 그래프 정의
+     * @throws NullPointerException     그래프가 null 인 경우
+     * @throws IllegalStateException    시작/종료 노드가 누락되었거나 엣지가 유효하지 않은 경우
+     */
     public void validate(WorkflowGraphDefinition graph) {
         Objects.requireNonNull(graph, "graph must not be null");
         ensureStartNodeExists(graph);

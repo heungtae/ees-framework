@@ -28,6 +28,13 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public class LinearToGraphConverter {
 
+    /**
+     * 선형 워크플로 정의를 그래프 워크플로 정의로 변환한다.
+     * ExecutionMode 에 따라 소스/싱크 핸들러 연결 방식을 달리 설정한다.
+     *
+     * @param def 변환할 선형 워크플로 정의
+     * @return 그래프 형태로 변환된 워크플로 정의
+     */
     public WorkflowGraphDefinition convert(WorkflowDefinition def) {
         return WorkflowGraphDsl.define(def.getName(), wf -> {
             wf.batchingOptions(def.getBatchingOptions());
