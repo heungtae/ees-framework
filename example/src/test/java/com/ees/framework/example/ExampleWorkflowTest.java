@@ -29,7 +29,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class ExampleWorkflowTest {
 
     @Test
-    void runsGreetingWorkflowEndToEnd() {
+    void runsGreetingWorkflowEndToEnd() throws Exception {
         GreetingSource source = new GreetingSource(List.of("hello", "team"));
         GreetingSourceHandler sourceHandler = new GreetingSourceHandler();
         UppercasePipelineStep uppercase = new UppercasePipelineStep();
@@ -62,6 +62,11 @@ class ExampleWorkflowTest {
         );
 
         runtime.startAll();
+
+        long deadline = System.currentTimeMillis() + 1_000;
+        while (sink.getAlerts().size() + sink.getNormal().size() < 2 && System.currentTimeMillis() < deadline) {
+            Thread.sleep(10);
+        }
 
         assertThat(sink.getNormal()).hasSize(2);
         assertThat(sink.getNormal())

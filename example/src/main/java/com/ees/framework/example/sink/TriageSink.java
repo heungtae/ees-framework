@@ -7,9 +7,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * AI 분류 결과에 따라 알림/일반을 구분해서 수집한다.
@@ -20,8 +19,8 @@ public class TriageSink implements Sink<String> {
 
     private static final Logger log = LoggerFactory.getLogger(TriageSink.class);
 
-    private final List<FxContext<String>> alerts = new ArrayList<>();
-    private final List<FxContext<String>> normal = new ArrayList<>();
+    private final List<FxContext<String>> alerts = new CopyOnWriteArrayList<>();
+    private final List<FxContext<String>> normal = new CopyOnWriteArrayList<>();
 
     /**
      * AI 응답의 분류 결과를 읽어 ALERT 메시지는 alerts, 기타는 normal 버킷에 저장한다.
@@ -29,7 +28,7 @@ public class TriageSink implements Sink<String> {
      * @param context aiResponse 메타가 포함된 메시지 컨텍스트
      */
     @Override
-    public synchronized void write(FxContext<String> context) {
+    public void write(FxContext<String> context) {
         String classification = extractClassification(context);
         if ("ALERT".equalsIgnoreCase(classification)) {
             alerts.add(context);
@@ -47,7 +46,7 @@ public class TriageSink implements Sink<String> {
      * @return ALERT 목록(읽기 전용 뷰)
      */
     public List<FxContext<String>> getAlerts() {
-        return Collections.unmodifiableList(alerts);
+        return List.copyOf(alerts);
     }
 
     /**
@@ -56,7 +55,7 @@ public class TriageSink implements Sink<String> {
      * @return 일반 메시지 목록(읽기 전용 뷰)
      */
     public List<FxContext<String>> getNormal() {
-        return Collections.unmodifiableList(normal);
+        return List.copyOf(normal);
     }
 
     private String extractClassification(FxContext<String> context) {

@@ -22,10 +22,6 @@ public class GreetingSource implements Source<String> {
 
     private static final String AFFINITY_KIND = "equipmentId";
     private static final String AFFINITY_VALUE = "example-greeting";
-    private static final String AI_PROMPT_KEY = "aiPrompt";
-    private static final String CLASSIFICATION_PROMPT =
-        "너는 수신된 문장을 GREETING, QUESTION, ALERT 중 하나로 분류하고 한 줄 이유를 제시한다. "
-            + "응답 형식: CLASSIFICATION: <LABEL>; REASON: <text>";
 
     private final List<String> greetings;
     private final FxCommand command;
@@ -56,7 +52,7 @@ public class GreetingSource implements Source<String> {
                     "example-greeting-source",
                     "greeting-source",
                     0,
-                    java.util.Map.of(AI_PROMPT_KEY, CLASSIFICATION_PROMPT)
+                    java.util.Map.of()
                 );
                 return new FxContext<>(command, headers, fxMessage, meta, affinity);
             })
