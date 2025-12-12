@@ -5,6 +5,7 @@ import com.ees.framework.annotations.FxSink;
 import com.ees.framework.annotations.FxSource;
 import com.ees.framework.annotations.SinkHandlerComponent;
 import com.ees.framework.annotations.SourceHandlerComponent;
+import com.ees.framework.context.FxAffinity;
 import com.ees.framework.context.FxCommand;
 import com.ees.framework.context.FxContext;
 import com.ees.framework.context.FxMessage;
@@ -94,7 +95,9 @@ class FxFrameworkApplicationWorkflowIntegrationTest {
         @Override
         public Iterable<FxContext<String>> read() {
             FxMessage<String> message = FxMessage.now("spring-source", "hello");
-            return java.util.List.of(FxContext.of(message, FxCommand.of("ingest")));
+            FxContext<String> context = FxContext.of(message, FxCommand.of("ingest"))
+                .withAffinity(FxAffinity.of("equipmentId", "spring-source"));
+            return java.util.List.of(context);
         }
     }
 

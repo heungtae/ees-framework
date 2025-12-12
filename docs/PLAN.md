@@ -80,3 +80,9 @@
 - [x] 오류 원인 분석 및 코드/설정 수정
 - [x] 수정 후 로컬 재빌드/테스트로 검증
 - [x] 필요 시 문서/추가 테스트 보강 여부 결정
+
+# 작업 계획: application 모듈 오류 수정
+- [x] application 빌드/테스트 오류 재현(mvn -pl application -DskipTests package 또는 clean test)
+- [x] 오류 원인 분석 및 코드/설정 수정
+- [x] 수정 후 로컬 재빌드/테스트로 검증
+- [x] 필요 시 문서/추가 테스트 보강 여부 결정
