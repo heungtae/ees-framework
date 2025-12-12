@@ -20,6 +20,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 @Component
 public class GreetingSource implements Source<String> {
 
+    private static final String AFFINITY_KIND = "equipmentId";
+    private static final String AFFINITY_VALUE = "example-greeting";
+
     private final List<String> greetings;
     private final FxCommand command;
     private final AtomicInteger sequence = new AtomicInteger();
@@ -44,7 +47,7 @@ public class GreetingSource implements Source<String> {
                 FxHeaders headers = FxHeaders.empty()
                     .with("greeting-sequence", String.valueOf(sequence.incrementAndGet()));
                 FxMessage<String> fxMessage = FxMessage.now("example-greeting", message);
-                FxAffinity affinity = FxAffinity.of("equipmentId", fxMessage.payload());
+                FxAffinity affinity = FxAffinity.of(AFFINITY_KIND, AFFINITY_VALUE);
                 return new FxContext<>(command, headers, fxMessage, FxMeta.empty(), affinity);
             })
             .toList();
