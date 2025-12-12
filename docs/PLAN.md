@@ -68,3 +68,9 @@
 - [x] 컴파일 오류 재현 및 원인 파악(mvn -pl workflow -DskipTests package)
 - [x] 오류 원인 수정 및 로컬 재검증
 - [x] 워크플로 모듈 변경사항 커밋
+
+# 작업 계획: ai-core 모듈 오류 수정
+- [x] ai-core 빌드/테스트에서 발생하는 오류 재현(mvn -pl ai-core -DskipTests package 등)
+- [x] 오류 원인 분석 및 코드/설정 수정
+- [x] 수정 후 로컬 재빌드/테스트로 검증
+- [ ] 필요 시 문서/추가 테스트 보강 여부 결정
