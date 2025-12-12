@@ -3,6 +3,7 @@ package com.ees.framework.example;
 import com.ees.framework.core.ExecutionMode;
 import com.ees.framework.example.ai.StubAiAgentService;
 import com.ees.framework.example.handler.AuditSinkHandler;
+import com.ees.framework.example.handler.AiSourceHandler;
 import com.ees.framework.example.handler.GreetingSourceHandler;
 import com.ees.framework.example.pipeline.UppercasePipelineStep;
 import com.ees.framework.example.sink.TriageSink;
@@ -32,6 +33,7 @@ class ExampleWorkflowTest {
     void runsGreetingWorkflowEndToEnd() throws Exception {
         GreetingSource source = new GreetingSource(List.of("hello", "team"));
         GreetingSourceHandler sourceHandler = new GreetingSourceHandler();
+        AiSourceHandler aiSourceHandler = new AiSourceHandler();
         UppercasePipelineStep uppercase = new UppercasePipelineStep();
         AiAgentPipelineStep aiStep = new AiAgentPipelineStep(new StubAiAgentService());
         AuditSinkHandler auditHandler = new AuditSinkHandler();
@@ -39,7 +41,7 @@ class ExampleWorkflowTest {
 
         WorkflowDefinition definition = WorkflowDsl.define("example-test-flow", builder -> builder
             .source("example-greeting")
-            .sourceHandlers(ExecutionMode.SEQUENTIAL, "greeting-source-handler")
+            .sourceHandlers(ExecutionMode.SEQUENTIAL, "greeting-source-handler", "ai-source-handler")
             .step("uppercase-message")
             .step("ai-agent-step")
             .sinkHandlers(ExecutionMode.SEQUENTIAL, "audit-sink-handler")
@@ -54,7 +56,7 @@ class ExampleWorkflowTest {
             new WorkflowEngine(),
             new DefaultWorkflowNodeResolver(
                 new DefaultSourceRegistry(List.of(source)),
-                new DefaultSourceHandlerRegistry(List.of(sourceHandler)),
+                new DefaultSourceHandlerRegistry(List.of(sourceHandler, aiSourceHandler)),
                 new DefaultPipelineStepRegistry(List.of(uppercase, aiStep)),
                 new DefaultSinkHandlerRegistry(List.of(auditHandler)),
                 new DefaultSinkRegistry(List.of(sink))

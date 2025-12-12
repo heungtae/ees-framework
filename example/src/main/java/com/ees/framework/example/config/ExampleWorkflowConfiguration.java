@@ -21,7 +21,7 @@ public class ExampleWorkflowConfiguration {
     public WorkflowDefinition exampleGreetingWorkflow() {
         return WorkflowDsl.define("example-greeting-workflow", builder -> builder
             .source("example-greeting")
-            .sourceHandlers(ExecutionMode.SEQUENTIAL, "greeting-source-handler")
+            .sourceHandlers(ExecutionMode.SEQUENTIAL, "greeting-source-handler", "ai-source-handler")
             .step("uppercase-message")
             .step("ai-agent-step")
             .sinkHandlers(ExecutionMode.SEQUENTIAL, "audit-sink-handler")

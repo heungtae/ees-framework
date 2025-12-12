@@ -103,3 +103,8 @@
 - [x] GreetingSource에서 AI 프롬프트 제거하고 메시지 전달만 수행하도록 수정
 - [x] 프롬프트를 생성/메타에 삽입하는 핸들러 로직 추가 및 테스트/구성 반영
 - [x] example 모듈 테스트로 변경 검증
+
+# 작업 계획: GreetingSourceHandler AI 로직 분리
+- [ ] GreetingSourceHandler에서 AI 프롬프트 로직 제거
+- [ ] AI 전용 SourceHandler 추가 및 워크플로/테스트 구성에 반영
+- [ ] example 모듈 테스트로 검증
