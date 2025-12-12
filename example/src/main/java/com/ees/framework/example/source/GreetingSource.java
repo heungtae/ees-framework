@@ -6,6 +6,7 @@ import com.ees.framework.context.FxContext;
 import com.ees.framework.context.FxHeaders;
 import com.ees.framework.context.FxMessage;
 import com.ees.framework.context.FxMeta;
+import com.ees.framework.context.FxAffinity;
 import com.ees.framework.source.Source;
 import org.springframework.stereotype.Component;
 
@@ -43,7 +44,8 @@ public class GreetingSource implements Source<String> {
                 FxHeaders headers = FxHeaders.empty()
                     .with("greeting-sequence", String.valueOf(sequence.incrementAndGet()));
                 FxMessage<String> fxMessage = FxMessage.now("example-greeting", message);
-                return new FxContext<>(command, headers, fxMessage, FxMeta.empty(), com.ees.framework.context.FxAffinity.none());
+                FxAffinity affinity = FxAffinity.of("equipmentId", fxMessage.payload());
+                return new FxContext<>(command, headers, fxMessage, FxMeta.empty(), affinity);
             })
             .toList();
     }
