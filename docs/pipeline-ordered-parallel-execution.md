@@ -61,7 +61,7 @@ ees:
     continuous: false
 ```
 
-`application.yml`에 위 옵션을 지정하면 `BlockingWorkflowEngine`이 동일한 값으로 초기화된다. 잘못된 값(음수/0, null 타임아웃 등) 입력 시 시작 단계에서 예외로 가드된다.
+`application.yml`에 위 옵션을 지정하면 `WorkflowEngine`이 동일한 값으로 초기화된다. 잘못된 값(음수/0, null 타임아웃 등) 입력 시 시작 단계에서 예외로 가드된다.
 
 ## 모니터링/장애 대응
 - 메트릭: 키별 큐 길이, 드롭/에러 카운트, 처리 지연, 워커 수.
@@ -69,25 +69,11 @@ ees:
 - 실패 정책: 단일 레코드 실패 시 재시도/스킵 선택; 스킵 시 순서 유지 후 진행.
 
 ## 적용 경로
-1) `BlockingWorkflowEngine`에 KeyResolver + per-key mailbox/worker 실행기 추가(현 배치/큐 옵션 재사용).
+1) `WorkflowEngine`에 KeyResolver + per-key mailbox/worker 실행기 추가(현 배치/큐 옵션 재사용).
 2) Workflow DSL에 키/큐/배치 옵션 노출(`perKey`, `keyResolver`, `queueCapacity`, `batchSize`, `batchTimeout`, `backpressurePolicy`).
 3) cluster assignments 레지스트리 조회 기반의 기본 KeyResolver를 도입하고, cluster 파티션 키(equipmentId/lotId 등) 변경 이벤트가 워크플로 런타임에 전달되도록 연계한다(키 변경 시 큐/워커 초기화 포함). 병렬 처리 단위가 cluster key임을 검증하는 테스트 추가.
 4) 기본 예제/테스트를 파티션 키로 업데이트하고, 커스텀 키 추출 테스트 추가.
 5) 메트릭/로그 훅 추가 후, 전 모듈 빌드/테스트.
-
-## Affinity 단일화 계획(context/cluster/pipeline)
-- 목표: cluster가 관리하는 affinity 키(kind+value)를 **context(FxContext)·pipeline·cluster** 전역에서 동일 값으로 유지.
-- 원칙:
-  - 단일 소스: `ees.cluster.assignment-affinity-kind`(기본 equipmentId) + 추출된 value가 전역 키.
-  - FxContext에 `affinity.kind`, `affinity.value` 필드를 저장하고 KeyResolver는 이 필드만 사용(헤더/메타 fallback은 마지막 수단).
-  - Cluster assign/토폴로지 이벤트와 pipeline KeyResolver/워커의 kind가 불일치하면 처리 중단/로그로 가드.
-  - Affinity kind 변경 이벤트가 오면 기존 큐/워커를 폐기 후 새 kind로 재바인딩.
-- 구현 체크리스트:
-  - [x] FxContext(또는 파이프라인 컨텍스트)에 `affinity.kind/value` 추가, 기본값은 cluster affinity kind(or none).
-  - [x] 기본 KeyResolver를 affinity 전용으로 고정(컨텍스트 필드 우선, 헤더/메타는 fallback).
-  - [x] AssignmentService 사용 시 `assignKey(..., kind, key, ...)` 호출이 기본이 되도록 어댑터/추출기 연계.
-  - [x] Cluster 토폴로지 이벤트를 구독해 affinity kind/값 변경 시 파이프라인 워커/큐를 재생성. (ClusterAffinityKindMonitor 제공: assignment 이벤트에서 kind 감지 후 WorkflowEngine.updateAffinityKind 호출하도록 연결)
-  - [x] 테스트: kind 불일치 시 거부/로그, affinity 변경 후 워커 재바인딩, 헤더 fallback 시 kind 지정 확인.
 
 ## 오픈 이슈
 - 파이프라인 스텝이 키 무관 공유 리소스를 쓸 때의 동시성 제어(락/스레드 안전성) 가이드 필요.

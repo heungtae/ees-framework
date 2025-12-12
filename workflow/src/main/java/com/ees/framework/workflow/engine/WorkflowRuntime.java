@@ -17,14 +17,14 @@ import java.util.Optional;
  * 여러 개의 WorkflowDefinition / WorkflowGraphDefinition 을 등록하고 실행한다.
  * - WorkflowDefinition 은 LinearToGraphConverter 를 통해 그래프로 변환 후 등록
  * - 등록 시 WorkflowGraphValidator 로 검증
- * - BlockingWorkflowEngine 을 통해 실행 가능한 Workflow 를 생성/관리
+ * - WorkflowEngine 을 통해 실행 가능한 Workflow 를 생성/관리
  */
 @Slf4j
 public class WorkflowRuntime {
 
     private final Map<String, Workflow> workflows = new LinkedHashMap<>();
     private final WorkflowGraphValidator validator;
-    private final BlockingWorkflowEngine engine;
+    private final WorkflowEngine engine;
     private final WorkflowNodeResolver resolver;
     private final LinearToGraphConverter converter;
     private final List<WorkflowDefinition> linearDefinitions;
@@ -35,7 +35,7 @@ public class WorkflowRuntime {
         List<WorkflowGraphDefinition> workflowGraphDefinitions,
         LinearToGraphConverter converter,
         WorkflowGraphValidator validator,
-        BlockingWorkflowEngine engine,
+        WorkflowEngine engine,
         WorkflowNodeResolver resolver
     ) {
         this.converter = Objects.requireNonNull(converter, "converter must not be null");

@@ -5,7 +5,7 @@ package com.ees.framework.workflow.engine;
  * - 이름
  * - start/stop 생명주기
  *
- * 실제 구현은 BlockingWorkflowEngine 에서 생성된다.
+ * 실제 구현은 WorkflowEngine 에서 생성된다.
  */
 public interface Workflow {
 

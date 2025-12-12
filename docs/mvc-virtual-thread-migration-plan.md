@@ -8,7 +8,7 @@
 ## Current Reactive Footprint (inventory)
 - HTTP/API: `AiChatController` now uses MVC + `SseEmitter` (no WebFlux handlers).
 - AI core: Service interfaces are blocking; Spring AI usage still brings reactive types (`NoOpChatModel`, tests). `RestMcpClient` is blocking, but auto-config still builds a WebClient and `ai-core/pom.xml` keeps `spring-webflux`/Reactor.
-- Workflow/pipeline: Core interfaces are blocking and `BlockingWorkflowEngine` now uses bounded-queue + batch drains; examples/tests are blocking.
+- Workflow/pipeline: Core interfaces are blocking and `WorkflowEngine` now uses bounded-queue + batch drains; examples/tests are blocking.
 - Metadata/messaging/cluster: Metadata-store API is blocking; cluster/raft services and membership tests still use `Flux`/`Mono`.
 - Configuration: App is set to `web-application-type: servlet`; no virtual thread flags yet. WebFlux starter removed from server side, but `ai-core` still depends on it.
 
@@ -91,17 +91,3 @@
 6) **Testing & Rollout**
    - Rewrite tests to MockMvc/blocking; replace StepVerifier with direct assertions/Awaitility.
    - Module-by-module test runs, then `mvn clean install`; document migration notes and residual WebFlux scope.
-
-## Execution Checklist
-- [x] BOM/Dependency: Spring Boot 3.4.7 + Spring AI 1.1.1 already set; server starter uses `spring-boot-starter-web` and app is servlet-based. 
-  - [x] Follow-up: drop `spring-webflux`/Reactor from `ai-core/pom.xml`, remove `reactor-test`, and switch MCP wiring to `RestClient` so WebFlux stays isolated or removed.
-- [x] API/Contracts (partial): `AiAgentService`/`AiSessionService`, metadata-store, pipeline/source/sink/handler APIs are blocking; `BlockingWorkflowEngine` stub exists.
-  - [x] Follow-up: migrate cluster/raft/messaging watcher APIs off `Flux`/`Mono`; update examples/tests to blocking signatures.
-  - [ ] Follow-up: add batch-aware contracts/backpressure knobs where Reactor `buffer` semantics used to exist (engine now drains via bounded queue; interfaces/DSL still single-item).
-- [ ] Engine/DSL: implement blocking/virtual-thread workflow engine with bounded-queue batching (size/time drains), parallelism, and routing options exposed via fluent DSL. (Engine batching/backpressure in place; DSL + parallel/routing still open.)
-- [x] AI Layer (partial): `AiChatController` uses MVC + `SseEmitter`; `RestMcpClient` uses `RestClient`.
-  - [x] Follow-up: update `AiAutoConfiguration` to build a `RestClient` (remove WebClient/Reactor connector) and eliminate remaining Reactor test harnesses; Spring AI reactive bits remain isolated to `ai-core`.
-  - [ ] Follow-up: define streaming buffering/backpressure contract for MVC/SSE and scope any residual WebFlux usage to Spring AI internals only.
-- [ ] Application Wiring: add `spring.threads.virtual.enabled=true`, register virtual-thread executors with fallbacks for Kafka/Ratis, and align sample UI/API to blocking contracts.
-- [x] Testing: reactive tests rewritten to blocking patterns across modules; module builds green (`mvn -pl spring-boot-starter -am clean test`, `mvn -pl cluster -am test` with Ratis test skipped by default).
-  - [ ] Follow-up: rerun full `mvn clean install` after workflow engine/batching changes and add targeted virtual-thread coverage.

@@ -1,6 +1,6 @@
 package com.ees.framework.workflow;
 
-import com.ees.framework.workflow.engine.BlockingWorkflowEngine;
+import com.ees.framework.workflow.engine.WorkflowEngine;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
 
@@ -14,10 +14,10 @@ public class WorkflowProperties {
     private int batchSize = 32;
     private Duration batchTimeout = Duration.ofMillis(200);
     private Duration cleanupIdleAfter = Duration.ofSeconds(30);
-    private BlockingWorkflowEngine.BackpressurePolicy backpressurePolicy = BlockingWorkflowEngine.BackpressurePolicy.BLOCK;
+    private WorkflowEngine.BackpressurePolicy backpressurePolicy = WorkflowEngine.BackpressurePolicy.BLOCK;
     private boolean continuous = false;
 
-    public BlockingWorkflowEngine.BatchingOptions toBatchingOptions() {
+    public WorkflowEngine.BatchingOptions toBatchingOptions() {
         if (queueCapacity <= 0) {
             throw new IllegalArgumentException("queueCapacity must be > 0");
         }
@@ -27,7 +27,7 @@ public class WorkflowProperties {
         if (batchTimeout == null || cleanupIdleAfter == null) {
             throw new IllegalStateException("batchTimeout and cleanupIdleAfter must be configured");
         }
-        return new BlockingWorkflowEngine.BatchingOptions(
+        return new WorkflowEngine.BatchingOptions(
             queueCapacity,
             batchSize,
             batchTimeout,
@@ -69,11 +69,11 @@ public class WorkflowProperties {
         this.cleanupIdleAfter = cleanupIdleAfter;
     }
 
-    public BlockingWorkflowEngine.BackpressurePolicy getBackpressurePolicy() {
+    public WorkflowEngine.BackpressurePolicy getBackpressurePolicy() {
         return backpressurePolicy;
     }
 
-    public void setBackpressurePolicy(BlockingWorkflowEngine.BackpressurePolicy backpressurePolicy) {
+    public void setBackpressurePolicy(WorkflowEngine.BackpressurePolicy backpressurePolicy) {
         this.backpressurePolicy = backpressurePolicy;
     }
 

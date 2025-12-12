@@ -37,7 +37,7 @@ public final class WorkflowDsl {
         private final List<String> pipelineSteps = new ArrayList<>();
         private HandlerChainDefinition sinkHandlers;
         private String sinkType;
-        private com.ees.framework.workflow.engine.BlockingWorkflowEngine.BatchingOptions batchingOptions;
+        private com.ees.framework.workflow.engine.WorkflowEngine.BatchingOptions batchingOptions;
 
         /**
          * 워크플로우 빌더를 생성한다.
@@ -97,7 +97,7 @@ public final class WorkflowDsl {
         /**
          * 워크플로 실행 옵션(배치/백프레셔 등)을 설정한다.
          */
-        public Builder batchingOptions(com.ees.framework.workflow.engine.BlockingWorkflowEngine.BatchingOptions batchingOptions) {
+        public Builder batchingOptions(com.ees.framework.workflow.engine.WorkflowEngine.BatchingOptions batchingOptions) {
             this.batchingOptions = batchingOptions;
             return this;
         }

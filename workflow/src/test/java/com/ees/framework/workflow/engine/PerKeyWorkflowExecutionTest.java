@@ -8,7 +8,7 @@ import com.ees.framework.context.FxMessage;
 import com.ees.framework.context.FxMeta;
 import com.ees.framework.sink.Sink;
 import com.ees.framework.source.Source;
-import com.ees.framework.workflow.engine.BlockingWorkflowEngine.BackpressurePolicy;
+import com.ees.framework.workflow.engine.WorkflowEngine.BackpressurePolicy;
 import com.ees.framework.workflow.model.WorkflowEdgeDefinition;
 import com.ees.framework.workflow.model.WorkflowGraphDefinition;
 import com.ees.framework.workflow.model.WorkflowNodeDefinition;
@@ -41,7 +41,7 @@ class PerKeyWorkflowExecutionTest {
         Source<String> source = () -> contexts;
         TrackingSink sink = new TrackingSink(contexts.size());
 
-        Workflow workflow = new BlockingWorkflowEngine().createWorkflow(graph, resolverFor(source, sink));
+        Workflow workflow = new WorkflowEngine().createWorkflow(graph, resolverFor(source, sink));
         workflow.start();
 
         assertThat(sink.await(Duration.ofSeconds(1))).isTrue();
@@ -74,7 +74,7 @@ class PerKeyWorkflowExecutionTest {
             }
         };
 
-        Workflow workflow = new BlockingWorkflowEngine().createWorkflow(graph, resolverFor(source, sink));
+        Workflow workflow = new WorkflowEngine().createWorkflow(graph, resolverFor(source, sink));
         Thread runner = new Thread(workflow::start);
         runner.start();
 
@@ -97,7 +97,7 @@ class PerKeyWorkflowExecutionTest {
                 new WorkflowNodeDefinition("sink", WorkflowNodeKind.SINK, "sink-bean")
             ),
             List.of(new WorkflowEdgeDefinition("source", "sink", null)),
-            new BlockingWorkflowEngine.BatchingOptions(1, 1, Duration.ofMillis(200), Duration.ofSeconds(1), BackpressurePolicy.DROP_OLDEST, false)
+            new WorkflowEngine.BatchingOptions(1, 1, Duration.ofMillis(200), Duration.ofSeconds(1), BackpressurePolicy.DROP_OLDEST, false)
         );
 
         List<FxContext<String>> contexts = List.of(
@@ -119,7 +119,7 @@ class PerKeyWorkflowExecutionTest {
             }
         };
 
-        Workflow workflow = new BlockingWorkflowEngine().createWorkflow(graph, resolverFor(source, sink));
+        Workflow workflow = new WorkflowEngine().createWorkflow(graph, resolverFor(source, sink));
         Thread runner = new Thread(workflow::start);
         runner.start();
 
@@ -133,7 +133,7 @@ class PerKeyWorkflowExecutionTest {
 
     @Test
     void throwsWhenBackpressurePolicyIsError() throws Exception {
-        BlockingWorkflowEngine.BatchingOptions options = new BlockingWorkflowEngine.BatchingOptions(
+        WorkflowEngine.BatchingOptions options = new WorkflowEngine.BatchingOptions(
             1, 1, Duration.ofMillis(200), Duration.ofSeconds(1), BackpressurePolicy.ERROR, false
         );
         WorkflowGraphDefinition graph = new WorkflowGraphDefinition(
@@ -160,7 +160,7 @@ class PerKeyWorkflowExecutionTest {
             }
         };
 
-        Workflow workflow = new BlockingWorkflowEngine().createWorkflow(graph, resolverFor(source, sink));
+        Workflow workflow = new WorkflowEngine().createWorkflow(graph, resolverFor(source, sink));
         Thread runner = new Thread(() -> assertThrows(IllegalStateException.class, workflow::start));
         runner.start();
 

@@ -1,171 +1,131 @@
-<!DOCTYPE html>
-<html lang="en">
+<!doctype html>
+<html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>AI Chat Console (Stub)</title>
-    <style>
-        body { font-family: Arial, sans-serif; background: #0f172a; color: #e2e8f0; margin: 0; padding: 24px; }
-        .panel { max-width: 900px; margin: 0 auto; background: #111827; padding: 16px; border-radius: 12px; box-shadow: 0 12px 32px rgba(0,0,0,0.3); }
-        h1 { margin-top: 0; }
-        .messages { background: #0b1224; border-radius: 8px; padding: 12px; height: 320px; overflow-y: auto; }
-        .msg { padding: 8px; margin-bottom: 6px; border-radius: 6px; }
-        .msg.user { background: #1d4ed8; }
-        .msg.assistant { background: #047857; }
-        label { display: block; margin: 8px 0 4px; }
-        input, textarea { width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #1f2937; background: #0b1224; color: #e2e8f0; }
-        button { margin-right: 8px; padding: 10px 14px; border: none; border-radius: 6px; background: #f59e0b; color: #0b1224; font-weight: bold; cursor: pointer; }
-        button:disabled { opacity: 0.5; cursor: not-allowed; }
-        .row { display: flex; gap: 12px; }
-    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Chat Console</title>
+    <link rel="stylesheet" href="ai-chat.css">
 </head>
 <body>
-<div class="panel">
-    <h1>AI Chat Console</h1>
-    <div class="row">
-        <div style="flex:1">
-            <label>Session ID</label>
-            <input id="sessionId" value="demo-session"/>
+<div class="page">
+    <header class="hero">
+        <div class="hero__text">
+            <p class="eyebrow">AI Chat Playground</p>
+            <h1>웹에서 바로 테스트하는 AI Chat</h1>
+            <p class="lede">동기/스트리밍 응답, 승인 헤더, 툴 화이트리스트를 빠르게 조합해보세요. (Ctrl+Enter 전송)</p>
         </div>
-        <div style="flex:1">
-            <label>User ID</label>
-            <input id="userId" value="demo-user"/>
+        <div class="status-grid">
+            <div class="status-card">
+                <div class="label">SSE 상태</div>
+                <div class="value" id="sseStatus">대기</div>
+            </div>
+            <div class="status-card">
+                <div class="label">마지막 요청</div>
+                <div class="value" id="lastRequest">-</div>
+            </div>
+            <div class="status-card">
+                <div class="label">진행 상태</div>
+                <div class="value status-inline">
+                    <span class="dot" id="loadingDot"></span>
+                    <span id="loadingText">대기</span>
+                </div>
+            </div>
         </div>
-    </div>
-    <div class="row">
-        <div style="flex:1">
-            <label>Tools Allowed (comma separated)</label>
-            <input id="toolsAllowed" placeholder="listNodes, describeTopology"/>
-        </div>
-        <div style="flex:1; display:flex; align-items:flex-end; gap:8px;">
-            <input type="checkbox" id="approveDangerous"/> <label for="approveDangerous">Approve dangerous tools</label>
-        </div>
-    </div>
-    <label>Prompt</label>
-    <textarea id="prompt" rows="3" placeholder="Ask something..."></textarea>
-    <div style="margin-top: 8px;">
-        <button id="sendBtn" onclick="sendChat()">Send (Sync)</button>
-        <button id="streamBtn" onclick="sendStream()">Send (Stream)</button>
-    </div>
-    <div style="margin-top: 12px;">
-        <button onclick="fetchNodes()">List Nodes</button>
-        <button onclick="fetchTopology()">Describe Topology</button>
-    </div>
-    <h3>Messages</h3>
-    <div class="messages" id="messages"></div>
+    </header>
+
+    <main class="shell">
+        <section class="panel">
+            <div class="panel__header">
+                <div>
+                    <p class="eyebrow">요청 구성</p>
+                    <h2>세션 · 옵션</h2>
+                </div>
+                <div class="pill">Blocking API · UUID 세션</div>
+            </div>
+            <div class="form-grid">
+                <label class="field">
+                    <span>Session ID</span>
+                    <div class="inline-input">
+                        <input id="sessionId" type="text" autocomplete="off" aria-label="Session ID">
+                        <button class="ghost" id="regenSession" type="button">새로 만들기</button>
+                    </div>
+                    <small>페이지 로드 시 UUID를 기본 생성합니다.</small>
+                </label>
+                <label class="field">
+                    <span>User ID</span>
+                    <input id="userId" type="text" autocomplete="off" aria-label="User ID" value="web-user">
+                    <small>기본값은 web-user이며 필요에 따라 수정하세요.</small>
+                </label>
+                <label class="field full">
+                    <span>Tools Allowed</span>
+                    <input id="toolsAllowed" type="text" placeholder="listNodes, describeTopology" aria-label="Tools Allowed (comma separated)">
+                    <small>콤마로 구분된 툴 목록. 위험 툴 사용 시 승인 체크 필요.</small>
+                </label>
+                <div class="toggles full">
+                    <label class="toggle">
+                        <input type="checkbox" id="streamingToggle" checked>
+                        <span class="slider"></span>
+                        <span class="toggle-label">스트리밍 모드</span>
+                    </label>
+                    <label class="toggle">
+                        <input type="checkbox" id="approveToggle">
+                        <span class="slider"></span>
+                        <span class="toggle-label">위험 툴 승인 (X-AI-Approve)</span>
+                    </label>
+                    <div class="hint">스트리밍 모드 해제 시 동기 `/api/ai/chat` 호출을 사용합니다.</div>
+                </div>
+            </div>
+        </section>
+
+        <section class="panel">
+            <div class="panel__header">
+                <div>
+                    <p class="eyebrow">메시지</p>
+                    <h2>프롬프트 입력</h2>
+                </div>
+                <div class="pill pill--subtle">Ctrl+Enter로 전송</div>
+            </div>
+            <label class="field full">
+                <span>Message</span>
+                <textarea id="prompt" rows="4" placeholder="AI에게 보낼 메시지를 입력하세요." aria-label="Prompt"></textarea>
+                <small>필수 입력. 세션/유저/툴 설정과 함께 전송됩니다.</small>
+            </label>
+            <div class="actions">
+                <div class="action-buttons">
+                    <button class="primary" id="sendBtn" type="button">스트림 전송</button>
+                    <button class="ghost" id="stopBtn" type="button" disabled>중단</button>
+                </div>
+                <div class="action-meta">
+                    <span class="kbd">Ctrl</span><span class="plus">+</span><span class="kbd">Enter</span>로 빠르게 전송
+                </div>
+            </div>
+            <div class="alert" id="errorBox" role="alert" hidden></div>
+        </section>
+
+        <section class="panel">
+            <div class="panel__header">
+                <div>
+                    <p class="eyebrow">출력</p>
+                    <h2>트랜스크립트</h2>
+                </div>
+                <button class="ghost" id="clearBtn" type="button">초기화</button>
+            </div>
+            <div class="transcript" id="transcript" aria-live="polite">
+                <div class="placeholder">아직 메시지가 없습니다. 프롬프트를 전송해 응답을 받아보세요.</div>
+            </div>
+            <div class="stream-log">
+                <div class="stream-log__header">
+                    <div>
+                        <p class="eyebrow">스트리밍</p>
+                        <h3>실시간 토큰</h3>
+                    </div>
+                    <span class="pill pill--subtle" id="chunkStatus">대기</span>
+                </div>
+                <pre class="stream-log__body" id="streamOutput" aria-live="polite"></pre>
+            </div>
+        </section>
+    </main>
 </div>
-<script>
-    function addMessage(role, content) {
-        const box = document.getElementById('messages');
-        const div = document.createElement('div');
-        div.className = `msg ${role}`;
-        div.textContent = `${role}: ${content}`;
-        box.appendChild(div);
-        box.scrollTop = box.scrollHeight;
-    }
-
-    async function sendChat() {
-        disableButtons(true);
-        const payload = buildPayload(false);
-        if (!payload) { disableButtons(false); return; }
-        const res = await fetch('/api/ai/chat', {
-            method: 'POST',
-            headers: buildHeaders(),
-            body: JSON.stringify(payload)
-        });
-        if (!res.ok) {
-            addMessage('system', 'Request failed: ' + res.statusText);
-            disableButtons(false);
-            return;
-        }
-        const data = await res.json();
-        addMessage('assistant', data.content);
-        disableButtons(false);
-    }
-
-    async function sendStream() {
-        disableButtons(true);
-        const payload = buildPayload(true);
-        if (!payload) { disableButtons(false); return; }
-        const res = await fetch('/api/ai/chat/stream', {
-            method: 'POST',
-            headers: buildHeaders(),
-            body: JSON.stringify(payload)
-        });
-        if (!res.ok || !res.body) {
-            addMessage('system', 'Streaming failed: ' + res.statusText);
-            disableButtons(false);
-            return;
-        }
-        const reader = res.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = '';
-        while (true) {
-            const {value, done} = await reader.read();
-            if (done) break;
-            buffer += decoder.decode(value, {stream: true});
-            const lines = buffer.split('\\n\\n');
-            buffer = lines.pop();
-            for (const chunk of lines) {
-                const dataLine = chunk.split('\\n').find(line => line.startsWith('data:'));
-                if (dataLine) {
-                    try {
-                        const event = JSON.parse(dataLine.replace('data:', '').trim());
-                        addMessage('assistant', event.content);
-                    } catch (e) {
-                        addMessage('system', 'Malformed SSE chunk');
-                    }
-                }
-            }
-        }
-        disableButtons(false);
-    }
-
-    async function fetchNodes() {
-        const res = await fetch('/api/ai/resources/nodes');
-        const text = await res.text();
-        addMessage('system', 'Nodes: ' + text);
-    }
-
-    async function fetchTopology() {
-        const res = await fetch('/api/ai/resources/topology');
-        const text = await res.text();
-        addMessage('system', 'Topology: ' + text);
-    }
-
-    function buildPayload(streaming) {
-        const sessionId = document.getElementById('sessionId').value;
-        const userId = document.getElementById('userId').value;
-        const content = document.getElementById('prompt').value;
-        if (!content.trim()) {
-            addMessage('system', 'Prompt is required');
-            return null;
-        }
-        addMessage('user', content);
-        const tools = document.getElementById('toolsAllowed').value
-            .split(',')
-            .map(t => t.trim())
-            .filter(Boolean);
-        return {
-            sessionId,
-            userId,
-            messages: [{role: 'user', content}],
-            toolsAllowed: tools,
-            streaming
-        };
-    }
-
-    function buildHeaders() {
-        const headers = {'Content-Type': 'application/json'};
-        if (document.getElementById('approveDangerous').checked) {
-            headers['X-AI-Approve'] = 'true';
-        }
-        return headers;
-    }
-
-    function disableButtons(disabled) {
-        document.getElementById('sendBtn').disabled = disabled;
-        document.getElementById('streamBtn').disabled = disabled;
-    }
-</script>
+<script src="ai-chat.js"></script>
 </body>
 </html>

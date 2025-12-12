@@ -33,7 +33,7 @@ public final class WorkflowGraphDsl {
         private final List<WorkflowEdgeDefinition> edges = new ArrayList<>();
         private String startNodeId;
         private final Set<String> endNodeIds = new LinkedHashSet<>();
-        private com.ees.framework.workflow.engine.BlockingWorkflowEngine.BatchingOptions batchingOptions;
+        private com.ees.framework.workflow.engine.WorkflowEngine.BatchingOptions batchingOptions;
 
         /**
          * 그래프 워크플로우 빌더를 생성한다.
@@ -124,7 +124,7 @@ public final class WorkflowGraphDsl {
          * @param batchingOptions 실행 옵션
          * @return 빌더
          */
-        public Builder batchingOptions(com.ees.framework.workflow.engine.BlockingWorkflowEngine.BatchingOptions batchingOptions) {
+        public Builder batchingOptions(com.ees.framework.workflow.engine.WorkflowEngine.BatchingOptions batchingOptions) {
             this.batchingOptions = batchingOptions;
             return this;
         }

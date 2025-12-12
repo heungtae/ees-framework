@@ -17,7 +17,7 @@ import com.ees.framework.registry.SourceRegistry;
 import com.ees.framework.sink.Sink;
 import com.ees.framework.source.Source;
 import com.ees.framework.workflow.DefaultWorkflowNodeResolver;
-import com.ees.framework.workflow.engine.BlockingWorkflowEngine;
+import com.ees.framework.workflow.engine.WorkflowEngine;
 import com.ees.framework.workflow.engine.WorkflowRuntime;
 import com.ees.framework.workflow.engine.WorkflowNodeResolver;
 import com.ees.framework.workflow.affinity.DefaultAffinityKeyResolver;
@@ -37,7 +37,7 @@ import java.util.List;
  * FX Framework Spring Boot AutoConfiguration.
  *
  * - 레지스트리 Bean 생성
- * - WorkflowGraphValidator / LinearToGraphConverter / BlockingWorkflowEngine Bean 생성
+ * - WorkflowGraphValidator / LinearToGraphConverter / WorkflowEngine Bean 생성
  * - WorkflowNodeResolver 기본 구현 생성
  * - WorkflowDefinition / WorkflowGraphDefinition 리스트는 추후 properties/DSL 로 확장
  */
@@ -89,9 +89,9 @@ public class FxFrameworkAutoConfiguration {
     }
 
     @Bean
-    public BlockingWorkflowEngine reactorWorkflowEngine(ClusterProperties clusterProperties,
+    public WorkflowEngine reactorWorkflowEngine(ClusterProperties clusterProperties,
                                                         WorkflowProperties workflowProperties) {
-        return new BlockingWorkflowEngine(
+        return new WorkflowEngine(
             workflowProperties.toBatchingOptions(),
             new DefaultAffinityKeyResolver(clusterProperties.getAssignmentAffinityKind())
         );
@@ -124,7 +124,7 @@ public class FxFrameworkAutoConfiguration {
         ObjectProvider<WorkflowGraphDefinition> workflowGraphDefinitions,
         LinearToGraphConverter converter,
         WorkflowGraphValidator validator,
-        BlockingWorkflowEngine engine,
+        WorkflowEngine engine,
         WorkflowNodeResolver resolver
     ) {
         return new WorkflowRuntime(

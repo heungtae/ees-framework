@@ -41,7 +41,7 @@ class WorkflowAffinityRebindIntegrationTest {
             .sink("sink-bean")
         );
 
-        BlockingWorkflowEngine engine = new BlockingWorkflowEngine();
+        WorkflowEngine engine = new WorkflowEngine();
         WorkflowRuntime runtime = buildRuntime(def, source, sink, engine);
         AffinityKindChangeHandler handler = AffinityKindChangeHandler.forRuntime(engine, runtime);
 
@@ -68,7 +68,7 @@ class WorkflowAffinityRebindIntegrationTest {
         runtime.stopAll();
     }
 
-    private WorkflowRuntime buildRuntime(WorkflowDefinition definition, Source<String> source, Sink<String> sink, BlockingWorkflowEngine engine) {
+    private WorkflowRuntime buildRuntime(WorkflowDefinition definition, Source<String> source, Sink<String> sink, WorkflowEngine engine) {
         WorkflowGraphDefinition graph = new LinearToGraphConverter().convert(definition);
         WorkflowGraphValidator validator = new WorkflowGraphValidator();
         WorkflowNodeResolver resolver = resolverFor(source, sink);

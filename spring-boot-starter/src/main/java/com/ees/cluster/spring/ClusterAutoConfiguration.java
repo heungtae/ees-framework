@@ -23,7 +23,7 @@ import com.ees.cluster.state.MetadataStoreClusterStateRepository;
 import com.ees.metadatastore.InMemoryMetadataStore;
 import com.ees.metadatastore.MetadataStore;
 import com.ees.framework.workflow.affinity.AffinityKindChangeHandler;
-import com.ees.framework.workflow.engine.BlockingWorkflowEngine;
+import com.ees.framework.workflow.engine.WorkflowEngine;
 import com.ees.framework.workflow.engine.WorkflowRuntime;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.boot.actuate.health.Health;
@@ -98,10 +98,10 @@ public class ClusterAutoConfiguration {
     }
 
     @Bean
-    @ConditionalOnBean({BlockingWorkflowEngine.class, WorkflowRuntime.class})
+    @ConditionalOnBean({WorkflowEngine.class, WorkflowRuntime.class})
     @ConditionalOnMissingBean
     public ClusterAffinityKindMonitor clusterAffinityKindMonitor(AssignmentService assignmentService,
-                                                                 BlockingWorkflowEngine workflowEngine,
+                                                                 WorkflowEngine workflowEngine,
                                                                  WorkflowRuntime workflowRuntime) {
         AffinityKindChangeHandler handler = AffinityKindChangeHandler.forRuntime(workflowEngine, workflowRuntime);
         return new ClusterAffinityKindMonitor(assignmentService, handler::onAffinityKindChanged);

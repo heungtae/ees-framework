@@ -5,7 +5,7 @@ import com.ees.cluster.assignment.InMemoryAssignmentService;
 import com.ees.cluster.model.Assignment;
 import com.ees.framework.workflow.affinity.AffinityKindChangeHandler;
 import com.ees.framework.workflow.affinity.DefaultAffinityKeyResolver;
-import com.ees.framework.workflow.engine.BlockingWorkflowEngine;
+import com.ees.framework.workflow.engine.WorkflowEngine;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
@@ -21,8 +21,8 @@ class ClusterAffinityKindMonitorTest {
     void updatesWorkflowEngineAndRebindsOnKindChange() {
         InMemoryAssignmentService assignmentService = new InMemoryAssignmentService();
         DefaultAffinityKeyResolver resolver = new DefaultAffinityKeyResolver("equipmentId");
-        BlockingWorkflowEngine engine = new BlockingWorkflowEngine(
-            BlockingWorkflowEngine.BatchingOptions.defaults(),
+        WorkflowEngine engine = new WorkflowEngine(
+            WorkflowEngine.BatchingOptions.defaults(),
             resolver
         );
         AtomicInteger rebinds = new AtomicInteger();

@@ -1,6 +1,6 @@
 package com.ees.framework.workflow.affinity;
 
-import com.ees.framework.workflow.engine.BlockingWorkflowEngine;
+import com.ees.framework.workflow.engine.WorkflowEngine;
 import com.ees.framework.workflow.engine.WorkflowRuntime;
 
 import java.util.Objects;
@@ -11,19 +11,19 @@ import java.util.Objects;
  */
 public class AffinityKindChangeHandler {
 
-    private final BlockingWorkflowEngine workflowEngine;
+    private final WorkflowEngine workflowEngine;
     private final Runnable rebinder;
 
-    public AffinityKindChangeHandler(BlockingWorkflowEngine workflowEngine) {
+    public AffinityKindChangeHandler(WorkflowEngine workflowEngine) {
         this(workflowEngine, () -> {});
     }
 
-    public AffinityKindChangeHandler(BlockingWorkflowEngine workflowEngine, Runnable rebinder) {
+    public AffinityKindChangeHandler(WorkflowEngine workflowEngine, Runnable rebinder) {
         this.workflowEngine = Objects.requireNonNull(workflowEngine, "workflowEngine must not be null");
         this.rebinder = Objects.requireNonNull(rebinder, "rebinder must not be null");
     }
 
-    public static AffinityKindChangeHandler forRuntime(BlockingWorkflowEngine engine, WorkflowRuntime runtime) {
+    public static AffinityKindChangeHandler forRuntime(WorkflowEngine engine, WorkflowRuntime runtime) {
         return new AffinityKindChangeHandler(engine, runtime::rebindAll);
     }
 

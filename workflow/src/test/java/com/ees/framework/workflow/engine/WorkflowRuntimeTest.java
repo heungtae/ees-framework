@@ -50,7 +50,7 @@ class WorkflowRuntimeTest {
             List.of(graphOnly),
             new LinearToGraphConverter(),
             new WorkflowGraphValidator(),
-            new BlockingWorkflowEngine(),
+            new WorkflowEngine(),
             new StaticResolver(Map.of(
                 "shared-source", source,
                 "sink-a", sinkA,

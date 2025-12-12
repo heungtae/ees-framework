@@ -33,7 +33,7 @@ class WorkflowAffinityGuardTest {
             List.of(new WorkflowEdgeDefinition("source", "sink", null))
         );
 
-        BlockingWorkflowEngine engine = new BlockingWorkflowEngine();
+        WorkflowEngine engine = new WorkflowEngine();
         Workflow workflow = engine.createWorkflow(graph, new SimpleResolver());
 
         assertThrows(IllegalStateException.class, workflow::start);
@@ -52,8 +52,8 @@ class WorkflowAffinityGuardTest {
             List.of(new WorkflowEdgeDefinition("source", "sink", null))
         );
 
-        BlockingWorkflowEngine engine = new BlockingWorkflowEngine(
-            BlockingWorkflowEngine.BatchingOptions.defaults(),
+        WorkflowEngine engine = new WorkflowEngine(
+            WorkflowEngine.BatchingOptions.defaults(),
             new DefaultAffinityKeyResolver("equipmentId")
         );
         Workflow workflow = engine.createWorkflow(graph, new MismatchedResolver());

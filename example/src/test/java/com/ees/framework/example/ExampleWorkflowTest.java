@@ -12,7 +12,7 @@ import com.ees.framework.registry.DefaultSinkRegistry;
 import com.ees.framework.registry.DefaultSourceHandlerRegistry;
 import com.ees.framework.registry.DefaultSourceRegistry;
 import com.ees.framework.workflow.DefaultWorkflowNodeResolver;
-import com.ees.framework.workflow.engine.BlockingWorkflowEngine;
+import com.ees.framework.workflow.engine.WorkflowEngine;
 import com.ees.framework.workflow.engine.WorkflowRuntime;
 import com.ees.framework.workflow.dsl.WorkflowDsl;
 import com.ees.framework.workflow.model.WorkflowDefinition;
@@ -47,7 +47,7 @@ class ExampleWorkflowTest {
             List.of(),
             new LinearToGraphConverter(),
             new WorkflowGraphValidator(),
-            new BlockingWorkflowEngine(),
+            new WorkflowEngine(),
             new DefaultWorkflowNodeResolver(
                 new DefaultSourceRegistry(List.of(source)),
                 new DefaultSourceHandlerRegistry(List.of(sourceHandler)),

@@ -33,27 +33,24 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 /**
- * WorkflowGraphDefinition + WorkflowNodeResolver 를 이용해
- * Reactor 기반 Workflow 구현을 생성하는 엔진 스켈레톤.
- *
- * 실제 그래프 -> Flux 파이프라인 매핑 로직은
- * 이후 단계에서 이 클래스 안에 채워 넣는다.
+ * WorkflowGraphDefinition과 WorkflowNodeResolver를 기반으로 키 단위 순서 보장을 유지하며 워크플로우를 실행하는 엔진.
+ * Source → Handler → Step → Sink 체인을 조립하고 affinity별 워커를 통해 병렬 처리한다.
  */
 @Slf4j
-public class BlockingWorkflowEngine {
+public class WorkflowEngine {
 
     private final BatchingOptions batching;
     private final AffinityKeyResolver affinityKeyResolver;
 
-    public BlockingWorkflowEngine() {
+    public WorkflowEngine() {
         this(BatchingOptions.defaults(), new DefaultAffinityKeyResolver());
     }
 
-    public BlockingWorkflowEngine(BatchingOptions batching) {
+    public WorkflowEngine(BatchingOptions batching) {
         this(batching, new DefaultAffinityKeyResolver());
     }
 
-    public BlockingWorkflowEngine(BatchingOptions batching, AffinityKeyResolver affinityKeyResolver) {
+    public WorkflowEngine(BatchingOptions batching, AffinityKeyResolver affinityKeyResolver) {
         this.batching = Objects.requireNonNull(batching, "batching must not be null");
         this.affinityKeyResolver = Objects.requireNonNull(affinityKeyResolver, "affinityKeyResolver must not be null");
     }

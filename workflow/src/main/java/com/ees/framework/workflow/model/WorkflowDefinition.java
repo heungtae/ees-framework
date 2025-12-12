@@ -3,7 +3,7 @@ package com.ees.framework.workflow.model;
 import lombok.Builder;
 import lombok.Singular;
 import lombok.Value;
-import com.ees.framework.workflow.engine.BlockingWorkflowEngine;
+import com.ees.framework.workflow.engine.WorkflowEngine;
 
 import java.util.List;
 import java.util.Objects;
@@ -47,7 +47,7 @@ public class WorkflowDefinition {
     /**
      * 워크플로 실행 옵션(배치/백프레셔 등).
      */
-    BlockingWorkflowEngine.BatchingOptions batchingOptions;
+    WorkflowEngine.BatchingOptions batchingOptions;
 
     @Builder
     public WorkflowDefinition(
@@ -57,7 +57,7 @@ public class WorkflowDefinition {
         @Singular List<String> pipelineSteps,
         HandlerChainDefinition sinkHandlerChain,
         String sinkType,
-        BlockingWorkflowEngine.BatchingOptions batchingOptions
+        WorkflowEngine.BatchingOptions batchingOptions
     ) {
         this.name = Objects.requireNonNull(name, "name must not be null");
         this.sourceType = Objects.requireNonNull(sourceType, "sourceType must not be null");
@@ -66,7 +66,7 @@ public class WorkflowDefinition {
         this.sinkHandlerChain = sinkHandlerChain;
         this.sinkType = Objects.requireNonNull(sinkType, "sinkType must not be null");
         this.batchingOptions = batchingOptions == null
-            ? BlockingWorkflowEngine.BatchingOptions.defaults()
+            ? WorkflowEngine.BatchingOptions.defaults()
             : batchingOptions;
     }
 
@@ -79,6 +79,6 @@ public class WorkflowDefinition {
         String sinkType
     ) {
         this(name, sourceType, sourceHandlerChain, pipelineSteps, sinkHandlerChain, sinkType,
-            BlockingWorkflowEngine.BatchingOptions.defaults());
+            WorkflowEngine.BatchingOptions.defaults());
     }
 }

@@ -14,7 +14,7 @@ import com.ees.framework.handlers.SourceHandler;
 import com.ees.framework.pipeline.PipelineStep;
 import com.ees.framework.sink.Sink;
 import com.ees.framework.source.Source;
-import com.ees.framework.workflow.engine.BlockingWorkflowEngine;
+import com.ees.framework.workflow.engine.WorkflowEngine;
 import com.ees.framework.workflow.engine.Workflow;
 import com.ees.framework.workflow.engine.WorkflowNodeResolver;
 import com.ees.framework.workflow.engine.WorkflowRuntime;
@@ -63,7 +63,7 @@ class FxFrameworkAutoConfigurationWorkflowTest {
             assertThat(resolver.resolve(nodeOfKind(graph, WorkflowNodeKind.SINK)))
                 .isSameAs(context.getBean(SampleSink.class));
 
-            BlockingWorkflowEngine engine = context.getBean(BlockingWorkflowEngine.class);
+            WorkflowEngine engine = context.getBean(WorkflowEngine.class);
             Workflow workflow = engine.createWorkflow(graph, resolver);
             assertThat(workflow.getName()).isEqualTo("sample-workflow");
             assertThat(graph.getStartNodeId()).isEqualTo("source");
