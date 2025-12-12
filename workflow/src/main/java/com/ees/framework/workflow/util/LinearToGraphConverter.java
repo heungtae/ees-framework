@@ -30,6 +30,7 @@ public class LinearToGraphConverter {
 
     public WorkflowGraphDefinition convert(WorkflowDefinition def) {
         return WorkflowGraphDsl.define(def.getName(), wf -> {
+            wf.batchingOptions(def.getBatchingOptions());
             // 1) source
             wf.source("source", def.getSourceType());
             String lastSourceNodeId = "source";

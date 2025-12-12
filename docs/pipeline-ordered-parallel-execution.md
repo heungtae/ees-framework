@@ -47,6 +47,22 @@
 - `clusterPartitionKey/affinityKind`: cluster 모듈이 노출하는 affinity kind를 파이프라인이 우선 사용해야 함.
 - `continuous`: true 시 Source 스트림을 계속 읽고 stop 신호까지 유지.
 
+### Spring Boot 설정 예시
+```yaml
+ees:
+  cluster:
+    assignment-affinity-kind: equipmentId
+  workflow:
+    queue-capacity: 512
+    batch-size: 64
+    batch-timeout: 200ms
+    cleanup-idle-after: 30s
+    backpressure-policy: BLOCK # 또는 DROP_OLDEST / ERROR
+    continuous: false
+```
+
+`application.yml`에 위 옵션을 지정하면 `BlockingWorkflowEngine`이 동일한 값으로 초기화된다. 잘못된 값(음수/0, null 타임아웃 등) 입력 시 시작 단계에서 예외로 가드된다.
+
 ## 모니터링/장애 대응
 - 메트릭: 키별 큐 길이, 드롭/에러 카운트, 처리 지연, 워커 수.
 - 로그/이벤트: backpressure 발생, 워커 생성/종료, 예외 발생 시 키 포함 로그.

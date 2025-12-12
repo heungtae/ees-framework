@@ -25,7 +25,9 @@ import com.ees.framework.workflow.model.WorkflowDefinition;
 import com.ees.framework.workflow.model.WorkflowGraphDefinition;
 import com.ees.framework.workflow.util.LinearToGraphConverter;
 import com.ees.framework.workflow.util.WorkflowGraphValidator;
+import com.ees.framework.workflow.WorkflowProperties;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Bean;
 
@@ -40,6 +42,7 @@ import java.util.List;
  * - WorkflowDefinition / WorkflowGraphDefinition 리스트는 추후 properties/DSL 로 확장
  */
 @AutoConfiguration
+@EnableConfigurationProperties({ClusterProperties.class, WorkflowProperties.class})
 public class FxFrameworkAutoConfiguration {
 
     // ------------------------------------------------------------------------
@@ -86,9 +89,10 @@ public class FxFrameworkAutoConfiguration {
     }
 
     @Bean
-    public BlockingWorkflowEngine reactorWorkflowEngine(ClusterProperties clusterProperties) {
+    public BlockingWorkflowEngine reactorWorkflowEngine(ClusterProperties clusterProperties,
+                                                        WorkflowProperties workflowProperties) {
         return new BlockingWorkflowEngine(
-            BlockingWorkflowEngine.BatchingOptions.defaults(),
+            workflowProperties.toBatchingOptions(),
             new DefaultAffinityKeyResolver(clusterProperties.getAssignmentAffinityKind())
         );
     }

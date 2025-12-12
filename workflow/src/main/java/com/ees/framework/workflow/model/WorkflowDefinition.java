@@ -3,6 +3,7 @@ package com.ees.framework.workflow.model;
 import lombok.Builder;
 import lombok.Singular;
 import lombok.Value;
+import com.ees.framework.workflow.engine.BlockingWorkflowEngine;
 
 import java.util.List;
 import java.util.Objects;
@@ -43,6 +44,11 @@ public class WorkflowDefinition {
      */
     String sinkType;
 
+    /**
+     * 워크플로 실행 옵션(배치/백프레셔 등).
+     */
+    BlockingWorkflowEngine.BatchingOptions batchingOptions;
+
     @Builder
     public WorkflowDefinition(
         String name,
@@ -50,7 +56,8 @@ public class WorkflowDefinition {
         HandlerChainDefinition sourceHandlerChain,
         @Singular List<String> pipelineSteps,
         HandlerChainDefinition sinkHandlerChain,
-        String sinkType
+        String sinkType,
+        BlockingWorkflowEngine.BatchingOptions batchingOptions
     ) {
         this.name = Objects.requireNonNull(name, "name must not be null");
         this.sourceType = Objects.requireNonNull(sourceType, "sourceType must not be null");
@@ -58,5 +65,20 @@ public class WorkflowDefinition {
         this.pipelineSteps = List.copyOf(pipelineSteps);
         this.sinkHandlerChain = sinkHandlerChain;
         this.sinkType = Objects.requireNonNull(sinkType, "sinkType must not be null");
+        this.batchingOptions = batchingOptions == null
+            ? BlockingWorkflowEngine.BatchingOptions.defaults()
+            : batchingOptions;
+    }
+
+    public WorkflowDefinition(
+        String name,
+        String sourceType,
+        HandlerChainDefinition sourceHandlerChain,
+        List<String> pipelineSteps,
+        HandlerChainDefinition sinkHandlerChain,
+        String sinkType
+    ) {
+        this(name, sourceType, sourceHandlerChain, pipelineSteps, sinkHandlerChain, sinkType,
+            BlockingWorkflowEngine.BatchingOptions.defaults());
     }
 }
