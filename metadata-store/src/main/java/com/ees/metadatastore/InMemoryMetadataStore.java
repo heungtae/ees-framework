@@ -31,7 +31,7 @@ public class InMemoryMetadataStore implements MetadataStore {
         Objects.requireNonNull(value, "value must not be null");
         Objects.requireNonNull(ttl, "ttl must not be null");
         cleanExpired();
-        store.put(key, new StoredValue(value, expiryFor(ttl)));
+        store.put(key, new StoredValue(value, MetadataTtlUtils.expiresAt(clock, ttl)));
         publishEvent(key, MetadataStoreEventType.PUT, value);
         return true;
     }
@@ -42,14 +42,14 @@ public class InMemoryMetadataStore implements MetadataStore {
         Objects.requireNonNull(value, "value must not be null");
         Objects.requireNonNull(ttl, "ttl must not be null");
         cleanExpired();
-        Instant expiresAt = expiryFor(ttl);
+        Instant expiresAt = MetadataTtlUtils.expiresAt(clock, ttl);
         StoredValue newValue = new StoredValue(value, expiresAt);
         StoredValue existing = store.putIfAbsent(key, newValue);
         if (existing == null) {
             publishEvent(key, MetadataStoreEventType.PUT, value);
             return true;
         }
-        if (isExpired(existing)) {
+        if (MetadataTtlUtils.isExpired(clock, existing.expiresAt())) {
             store.put(key, newValue);
             publishEvent(key, MetadataStoreEventType.PUT, value);
             return true;
@@ -63,7 +63,7 @@ public class InMemoryMetadataStore implements MetadataStore {
         Objects.requireNonNull(type, "type must not be null");
         cleanExpired();
         StoredValue value = store.get(key);
-        if (value == null || isExpired(value)) {
+        if (value == null || MetadataTtlUtils.isExpired(clock, value.expiresAt())) {
             store.remove(key);
             return Optional.empty();
         }
@@ -91,9 +91,9 @@ public class InMemoryMetadataStore implements MetadataStore {
         Objects.requireNonNull(newValue, "newValue must not be null");
         Objects.requireNonNull(ttl, "ttl must not be null");
         cleanExpired();
-        Instant expiresAt = expiryFor(ttl);
+        Instant expiresAt = MetadataTtlUtils.expiresAt(clock, ttl);
         StoredValue current = store.get(key);
-        if (current == null || isExpired(current) || !Objects.equals(current.value(), expectedValue)) {
+        if (current == null || MetadataTtlUtils.isExpired(clock, current.expiresAt()) || !Objects.equals(current.value(), expectedValue)) {
             return false;
         }
         store.put(key, new StoredValue(newValue, expiresAt));
@@ -109,7 +109,7 @@ public class InMemoryMetadataStore implements MetadataStore {
         return store.entrySet().stream()
             .filter(entry -> entry.getKey().startsWith(prefix))
             .map(Map.Entry::getValue)
-            .filter(value -> !isExpired(value))
+            .filter(value -> !MetadataTtlUtils.isExpired(clock, value.expiresAt()))
             .map(StoredValue::value)
             .filter(type::isInstance)
             .map(type::cast)
@@ -131,23 +131,11 @@ public class InMemoryMetadataStore implements MetadataStore {
     private void cleanExpired() {
         Instant now = clock.instant();
         for (Map.Entry<String, StoredValue> entry : store.entrySet()) {
-            if (isExpired(entry.getValue())) {
+            if (MetadataTtlUtils.isExpired(clock, entry.getValue().expiresAt())) {
                 store.remove(entry.getKey());
                 publishEvent(entry.getKey(), MetadataStoreEventType.EXPIRE, entry.getValue().value(), now);
             }
         }
-    }
-
-    private boolean isExpired(StoredValue storedValue) {
-        Instant expiresAt = storedValue.expiresAt();
-        return expiresAt != null && !expiresAt.isAfter(clock.instant());
-    }
-
-    private Instant expiryFor(Duration ttl) {
-        if (ttl.isZero() || ttl.isNegative()) {
-            return null;
-        }
-        return clock.instant().plus(ttl);
     }
 
     private void publishEvent(String key, MetadataStoreEventType type, Object value) {
