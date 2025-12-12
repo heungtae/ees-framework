@@ -24,7 +24,7 @@ public class ExampleWorkflowConfiguration {
             .sourceHandlers(ExecutionMode.SEQUENTIAL, "greeting-source-handler", "ai-source-handler")
             .step("uppercase-message")
             .step("ai-agent-step")
-            .sinkHandlers(ExecutionMode.SEQUENTIAL, "audit-sink-handler")
+            .sinkHandlers(ExecutionMode.SEQUENTIAL, "audit-sink-handler", "alert-routing-handler")
             .sink("triage-collector")
         );
     }

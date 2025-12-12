@@ -4,8 +4,10 @@ import com.ees.framework.core.ExecutionMode;
 import com.ees.framework.example.ai.StubAiAgentService;
 import com.ees.framework.example.handler.AuditSinkHandler;
 import com.ees.framework.example.handler.AiSourceHandler;
+import com.ees.framework.example.handler.AlertRoutingSinkHandler;
 import com.ees.framework.example.handler.GreetingSourceHandler;
 import com.ees.framework.example.pipeline.UppercasePipelineStep;
+import com.ees.framework.example.sink.AlertNotificationSink;
 import com.ees.framework.example.sink.TriageSink;
 import com.ees.framework.example.source.GreetingSource;
 import com.ees.framework.registry.DefaultPipelineStepRegistry;
@@ -33,10 +35,15 @@ class ExampleWorkflowTest {
     void runsGreetingWorkflowEndToEnd() throws Exception {
         GreetingSource source = new GreetingSource(List.of("hello", "team"));
         GreetingSourceHandler sourceHandler = new GreetingSourceHandler();
-        AiSourceHandler aiSourceHandler = new AiSourceHandler();
+        AiSourceHandler aiSourceHandler = new AiSourceHandler(
+            null,
+            "example-greeting"
+        );
         UppercasePipelineStep uppercase = new UppercasePipelineStep();
         AiAgentPipelineStep aiStep = new AiAgentPipelineStep(new StubAiAgentService());
         AuditSinkHandler auditHandler = new AuditSinkHandler();
+        AlertNotificationSink alertNotificationSink = new AlertNotificationSink();
+        AlertRoutingSinkHandler alertRoutingHandler = new AlertRoutingSinkHandler(alertNotificationSink);
         TriageSink sink = new TriageSink();
 
         WorkflowDefinition definition = WorkflowDsl.define("example-test-flow", builder -> builder
@@ -44,7 +51,7 @@ class ExampleWorkflowTest {
             .sourceHandlers(ExecutionMode.SEQUENTIAL, "greeting-source-handler", "ai-source-handler")
             .step("uppercase-message")
             .step("ai-agent-step")
-            .sinkHandlers(ExecutionMode.SEQUENTIAL, "audit-sink-handler")
+            .sinkHandlers(ExecutionMode.SEQUENTIAL, "audit-sink-handler", "alert-routing-handler")
             .sink("triage-collector")
         );
 
@@ -58,8 +65,8 @@ class ExampleWorkflowTest {
                 new DefaultSourceRegistry(List.of(source)),
                 new DefaultSourceHandlerRegistry(List.of(sourceHandler, aiSourceHandler)),
                 new DefaultPipelineStepRegistry(List.of(uppercase, aiStep)),
-                new DefaultSinkHandlerRegistry(List.of(auditHandler)),
-                new DefaultSinkRegistry(List.of(sink))
+                new DefaultSinkHandlerRegistry(List.of(auditHandler, alertRoutingHandler)),
+                new DefaultSinkRegistry(List.of(sink, alertNotificationSink))
             )
         );
 
@@ -78,6 +85,7 @@ class ExampleWorkflowTest {
             .isEqualTo("GreetingSourceHandler");
         assertThat(sink.getNormal().get(0).meta().attributes())
             .containsKeys("auditedBy", "auditedAt", "aiResponse");
+        assertThat(alertNotificationSink.getAlerts()).isEmpty();
 
         runtime.stopAll();
     }

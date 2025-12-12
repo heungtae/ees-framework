@@ -105,6 +105,11 @@
 - [x] example 모듈 테스트로 변경 검증
 
 # 작업 계획: GreetingSourceHandler AI 로직 분리
-- [ ] GreetingSourceHandler에서 AI 프롬프트 로직 제거
-- [ ] AI 전용 SourceHandler 추가 및 워크플로/테스트 구성에 반영
-- [ ] example 모듈 테스트로 검증
+- [x] GreetingSourceHandler에서 AI 프롬프트 로직 제거
+- [x] AI 전용 SourceHandler 추가 및 워크플로/테스트 구성에 반영
+- [x] example 모듈 테스트로 검증
+
+# 작업 계획: AI 분류 설정/알림 후속 처리 추가
+- [x] example 모듈에 AI 분류 프롬프트/지원 소스 설정을 프로퍼티로 추가
+- [x] ALERT 분류 시 별도 알림 Sink로 전달하는 SinkHandler/Sink 구현
+- [x] 워크플로/테스트에 새로운 SinkHandler/Sink를 반영하고 검증
