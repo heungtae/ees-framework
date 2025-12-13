@@ -56,14 +56,26 @@ public class WorkflowRuntime {
         this.linearDefinitions = List.copyOf(workflowDefinitions);
         this.graphDefinitions = List.copyOf(workflowGraphDefinitions);
 
+        log.info("Initializing WorkflowRuntime linearDefinitions={} graphDefinitions={}",
+            this.linearDefinitions.size(), this.graphDefinitions.size());
+        if (log.isDebugEnabled()) {
+            log.debug("WorkflowRuntime linearDefinitionNames={}",
+                this.linearDefinitions.stream().map(WorkflowDefinition::getName).toList());
+            log.debug("WorkflowRuntime graphDefinitionNames={}",
+                this.graphDefinitions.stream().map(WorkflowGraphDefinition::getName).toList());
+        }
+
         this.linearDefinitions.forEach(this::registerWorkflowDefinition);
         this.graphDefinitions.forEach(this::registerGraphDefinition);
+
+        log.info("WorkflowRuntime initialized workflows={}", workflows.size());
     }
 
     /**
      * 등록된 모든 Workflow 를 시작한다. 이미 실행 중인 워크플로는 그대로 둔다.
      */
     public void startAll() {
+        log.info("Starting all workflows count={}", workflows.size());
         workflows.values().forEach(Workflow::start);
     }
 
@@ -71,6 +83,7 @@ public class WorkflowRuntime {
      * 등록된 모든 Workflow 를 중지한다. 실행 중이 아니어도 예외를 발생시키지 않는다.
      */
     public void stopAll() {
+        log.info("Stopping all workflows count={}", workflows.size());
         workflows.values().forEach(Workflow::stop);
     }
 
@@ -98,16 +111,22 @@ public class WorkflowRuntime {
      * 동기화되어 호출되므로 재바인딩 동안 외부 호출이 섞이지 않는다.
      */
     public synchronized void rebindAll() {
+        log.info("Rebinding all workflows count={}", workflows.size());
         stopAll();
         workflows.clear();
         linearDefinitions.forEach(this::registerWorkflowDefinition);
         graphDefinitions.forEach(this::registerGraphDefinition);
         startAll();
+        log.info("Rebind complete workflows={}", workflows.size());
     }
     // registerWorkflowDefinition 동작을 수행한다.
 
     private void registerWorkflowDefinition(WorkflowDefinition definition) {
         WorkflowGraphDefinition graph = converter.convert(definition);
+        if (log.isDebugEnabled()) {
+            log.debug("Converted linear workflow definition name={} nodes={} edges={}",
+                definition.getName(), graph.getNodes().size(), graph.getEdges().size());
+        }
         registerGraphDefinition(graph);
     }
     // registerGraphDefinition 동작을 수행한다.
@@ -119,6 +138,11 @@ public class WorkflowRuntime {
         }
         Workflow workflow = engine.createWorkflow(graph, resolver);
         workflows.put(workflow.getName(), workflow);
-        log.debug("Registered workflow: {}", workflow.getName());
+        log.info("Registered workflow name={} nodes={} edges={}",
+            workflow.getName(), graph.getNodes().size(), graph.getEdges().size());
+        if (log.isDebugEnabled()) {
+            log.debug("Registered workflow startNodeId={} batchingOptions={}",
+                graph.getStartNodeId(), graph.getBatchingOptions());
+        }
     }
 }

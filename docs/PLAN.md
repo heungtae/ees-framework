@@ -139,3 +139,34 @@
 - [x] `docs/javadoc.md` 작성
 - [x] PLAN 체크리스트 업데이트
 - [x] 변경사항 커밋
+
+# 작업 계획: Kafka Source 추가
+
+- [x] 기존 Source SPI/패턴 파악
+- [x] Kafka Source 설계·API 확정
+- [x] 구현 및 Spring 등록(autoconfigure)
+- [x] 테스트·예제 설정 추가
+- [x] 모듈 빌드로 검증
+
+# 작업 계획: Kafka Sink 추가
+
+- [x] 기존 Sink SPI/패턴 파악
+- [x] Kafka Sink 설계·API 확정
+- [x] 구현 및 Spring 등록(autoconfigure)
+- [x] 테스트 추가
+- [x] 모듈 빌드로 검증
+
+# 작업 계획: Kafka Source/Sink builtin 이동 검토
+
+- [x] builtin 패키지 의미/관례 정리
+- [x] builtin 이동 시 영향(설정/의존성/호환성) 평가
+- [x] 대안 구조(현행 유지 vs builtin 하위 패키지 vs 별도 모듈) 비교
+- [x] 권고안/다음 액션 정리
+
+# 작업 계획: workflow 모듈 init 로깅 보강
+
+- [x] workflow 모듈 초기화 포인트 선정
+- [x] INFO 로그 추가(런타임/엔진/등록/리바인드)
+- [x] DEBUG 로그 추가(상세 설정/노드 요약/워커 생성)
+- [x] 모듈 테스트로 검증
+- [x] 체크리스트 완료 처리

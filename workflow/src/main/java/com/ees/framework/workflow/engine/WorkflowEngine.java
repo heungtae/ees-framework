@@ -67,6 +67,11 @@ public class WorkflowEngine {
     public WorkflowEngine(BatchingOptions batching, AffinityKeyResolver affinityKeyResolver) {
         this.batching = Objects.requireNonNull(batching, "batching must not be null");
         this.affinityKeyResolver = Objects.requireNonNull(affinityKeyResolver, "affinityKeyResolver must not be null");
+        log.info("Initialized WorkflowEngine batchingOptions={} affinityKeyResolver={}",
+            this.batching, this.affinityKeyResolver.getClass().getSimpleName());
+        if (log.isDebugEnabled() && this.affinityKeyResolver instanceof DefaultAffinityKeyResolver resolver) {
+            log.debug("WorkflowEngine defaultAffinityKind={}", resolver.defaultKind());
+        }
     }
 
     /**
@@ -77,7 +82,12 @@ public class WorkflowEngine {
      * @return 실행 가능한 Workflow 인스턴스
      */
     public Workflow createWorkflow(WorkflowGraphDefinition graph, WorkflowNodeResolver resolver) {
-        return new DefaultWorkflow(graph, resolver, resolveBatching(graph), affinityKeyResolver);
+        BatchingOptions effectiveBatching = resolveBatching(graph);
+        if (log.isDebugEnabled()) {
+            log.debug("Creating workflow name={} nodes={} edges={} batchingOptions={}",
+                graph.getName(), graph.getNodes().size(), graph.getEdges().size(), effectiveBatching);
+        }
+        return new DefaultWorkflow(graph, resolver, effectiveBatching, affinityKeyResolver);
     }
     // resolveBatching 동작을 수행한다.
 
@@ -142,12 +152,22 @@ public class WorkflowEngine {
                 return;
             }
             log.info("Starting workflow: {}", graph.getName());
+            if (log.isDebugEnabled()) {
+                log.debug("Workflow {} batchingOptions={} startNodeId={}",
+                    graph.getName(), batching, graph.getStartNodeId());
+            }
 
             WorkflowNodeDefinition startNode = findNode(graph.getStartNodeId());
             if (startNode.getKind() != WorkflowNodeKind.SOURCE) {
                 throw new IllegalStateException("Start node must be SOURCE: " + startNode.getId());
             }
             PipelineChain chain = buildPipelineChain(startNode);
+            if (log.isDebugEnabled()) {
+                log.debug("Workflow {} pipeline processors={} sink={}",
+                    graph.getName(),
+                    chain.processors().size(),
+                    chain.sink().getClass().getSimpleName());
+            }
             @SuppressWarnings("unchecked")
             Source<Object> source = (Source<Object>) resolver.resolve(startNode);
 
@@ -380,6 +400,9 @@ public class WorkflowEngine {
 
             private void start() {
                 task = workerExecutor.submit(this);
+                if (log.isDebugEnabled()) {
+                    log.debug("Started per-key worker workflow={} affinity={}", graph.getName(), affinity);
+                }
             }
             // stop 동작을 수행한다.
 
@@ -409,6 +432,10 @@ public class WorkflowEngine {
                                 boolean enqueued = queue.offer(context);
                                 if (!enqueued) {
                                     throw new IllegalStateException("Workflow queue is full; backpressure threshold exceeded after drop-oldest");
+                                }
+                                if (log.isDebugEnabled()) {
+                                    log.debug("Dropped oldest item due to backpressure workflow={} affinity={} queueCapacity={}",
+                                        graph.getName(), affinity, batching.queueCapacity());
                                 }
                             }
                         }
@@ -451,6 +478,9 @@ public class WorkflowEngine {
                 } finally {
                     drainRemaining(batch);
                     removeWorker(affinity);
+                    if (log.isDebugEnabled()) {
+                        log.debug("Stopped per-key worker workflow={} affinity={}", graph.getName(), affinity);
+                    }
                 }
             }
             // shouldContinue 동작을 수행한다.

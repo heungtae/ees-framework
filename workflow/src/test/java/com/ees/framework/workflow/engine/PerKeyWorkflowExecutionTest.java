@@ -107,13 +107,26 @@ class PerKeyWorkflowExecutionTest {
         );
         Source<String> source = () -> contexts;
         CountDownLatch firstWritten = new CountDownLatch(1);
-        CountDownLatch releaseFirst = new CountDownLatch(1);
+        Object monitor = new Object();
+        boolean[] state = new boolean[] {false, false}; // [0]=blocking, [1]=release
         TrackingSink sink = new TrackingSink(contexts.size()) {
             @Override
             public void write(FxContext<String> context) {
                 if ("first".equals(context.message().payload())) {
                     firstWritten.countDown();
-                    awaitQuietly(releaseFirst);
+                    synchronized (monitor) {
+                        state[0] = true;
+                        monitor.notifyAll();
+                        long deadlineNanos = System.nanoTime() + TimeUnit.SECONDS.toNanos(2);
+                        while (!state[1] && System.nanoTime() < deadlineNanos) {
+                            try {
+                                monitor.wait(50);
+                            } catch (InterruptedException e) {
+                                Thread.currentThread().interrupt();
+                                break;
+                            }
+                        }
+                    }
                 }
                 super.write(context);
             }
@@ -124,7 +137,14 @@ class PerKeyWorkflowExecutionTest {
         runner.start();
 
         assertThat(firstWritten.await(1, TimeUnit.SECONDS)).isTrue();
-        releaseFirst.countDown();
+        synchronized (monitor) {
+            long deadlineNanos = System.nanoTime() + TimeUnit.SECONDS.toNanos(2);
+            while (!state[0] && System.nanoTime() < deadlineNanos) {
+                monitor.wait(50);
+            }
+            state[1] = true;
+            monitor.notifyAll();
+        }
         runner.join(2_000);
         workflow.stop();
 

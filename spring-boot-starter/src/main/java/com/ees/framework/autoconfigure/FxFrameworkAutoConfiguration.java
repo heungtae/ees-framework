@@ -15,7 +15,11 @@ import com.ees.framework.registry.SinkRegistry;
 import com.ees.framework.registry.SourceHandlerRegistry;
 import com.ees.framework.registry.SourceRegistry;
 import com.ees.framework.sink.Sink;
+import com.ees.framework.sink.kafka.KafkaSink;
+import com.ees.framework.sink.kafka.KafkaSinkProperties;
 import com.ees.framework.source.Source;
+import com.ees.framework.source.kafka.KafkaSource;
+import com.ees.framework.source.kafka.KafkaSourceProperties;
 import com.ees.framework.workflow.DefaultWorkflowNodeResolver;
 import com.ees.framework.workflow.engine.WorkflowEngine;
 import com.ees.framework.workflow.engine.WorkflowRuntime;
@@ -27,6 +31,7 @@ import com.ees.framework.workflow.util.LinearToGraphConverter;
 import com.ees.framework.workflow.util.WorkflowGraphValidator;
 import com.ees.framework.workflow.WorkflowProperties;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Bean;
@@ -42,7 +47,12 @@ import java.util.List;
  * - WorkflowDefinition / WorkflowGraphDefinition 리스트는 추후 properties/DSL 로 확장
  */
 @AutoConfiguration
-@EnableConfigurationProperties({ClusterProperties.class, WorkflowProperties.class})
+@EnableConfigurationProperties({
+    ClusterProperties.class,
+    WorkflowProperties.class,
+    KafkaSourceProperties.class,
+    KafkaSinkProperties.class
+})
 public class FxFrameworkAutoConfiguration {
 
     // ------------------------------------------------------------------------
@@ -97,6 +107,30 @@ public class FxFrameworkAutoConfiguration {
     @Bean
     public SinkRegistry sinkRegistry(List<Sink<?>> sinks) {
         return new DefaultSinkRegistry(sinks);
+    }
+
+    // ------------------------------------------------------------------------
+    // Built-in Sources
+    // ------------------------------------------------------------------------
+    /**
+     * {@code ees.source.kafka.enabled=true} 인 경우 기본 Kafka Source(@FxSource(type="kafka"))를 등록한다.
+     */
+    @Bean
+    @ConditionalOnProperty(prefix = "ees.source.kafka", name = "enabled", havingValue = "true")
+    public KafkaSource kafkaSource(KafkaSourceProperties properties) {
+        return new KafkaSource(properties.toSettings());
+    }
+
+    // ------------------------------------------------------------------------
+    // Built-in Sinks
+    // ------------------------------------------------------------------------
+    /**
+     * {@code ees.sink.kafka.enabled=true} 인 경우 기본 Kafka Sink(@FxSink("kafka"))를 등록한다.
+     */
+    @Bean
+    @ConditionalOnProperty(prefix = "ees.sink.kafka", name = "enabled", havingValue = "true")
+    public KafkaSink kafkaSink(KafkaSinkProperties properties) {
+        return new KafkaSink(properties.toSettings());
     }
 
     // ------------------------------------------------------------------------
