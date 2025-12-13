@@ -134,3 +134,8 @@
 - [x] private 메서드: 필요한 경우 주석으로 보강
 - [x] `mvn clean test`로 전체 검증
 - [x] 변경사항 커밋
+
+# 작업 계획: Javadoc 가이드 문서 추가
+- [x] `docs/javadoc.md` 작성
+- [x] PLAN 체크리스트 업데이트
+- [x] 변경사항 커밋
