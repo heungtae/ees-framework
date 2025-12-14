@@ -3,7 +3,7 @@ package com.ees.ai.api;
 import com.ees.ai.core.AiAgentService;
 import com.ees.ai.core.AiRequest;
 import com.ees.ai.core.AiResponse;
-import com.ees.ai.mcp.McpClient;
+import com.ees.ai.control.ControlClient;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.Collections;
@@ -27,14 +27,18 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import static org.springframework.http.HttpStatus.BAD_REQUEST;
 
 /**
- * WebFlux endpoints for AI chat (sync + streaming).
+ * AI Chat API 컨트롤러(sync + streaming).
+ * <p>
+ * - {@code /api/ai/chat}: 동기 응답
+ * - {@code /api/ai/chat/stream}: SSE 스트리밍
+ * - {@code /api/ai/resources/*}: Control 리소스 조회
  */
 @RestController
 @RequestMapping("/api/ai")
 public class AiChatController {
 
     private final AiAgentService aiAgentService;
-    private final McpClient mcpClient;
+    private final ControlClient controlClient;
     // of 동작을 수행한다.
 
     private static final Set<String> DANGEROUS_TOOLS = Set.of(
@@ -46,9 +50,9 @@ public class AiChatController {
      * @param mcpClient 
      */
 
-    public AiChatController(AiAgentService aiAgentService, ObjectProvider<McpClient> mcpClient) {
+    public AiChatController(AiAgentService aiAgentService, ObjectProvider<ControlClient> controlClient) {
         this.aiAgentService = aiAgentService;
-        this.mcpClient = mcpClient.getIfAvailable();
+        this.controlClient = controlClient.getIfAvailable();
     }
     /**
      * chat를 수행한다.
@@ -100,8 +104,8 @@ public class AiChatController {
 
     @GetMapping("/resources/nodes")
     public ResponseEntity<String> listNodes() {
-        requireMcp();
-        return ResponseEntity.ok(mcpClient.listNodes());
+        requireControl();
+        return ResponseEntity.ok(controlClient.listNodes());
     }
     /**
      * topology를 수행한다.
@@ -110,8 +114,8 @@ public class AiChatController {
 
     @GetMapping("/resources/topology")
     public ResponseEntity<String> topology() {
-        requireMcp();
-        return ResponseEntity.ok(mcpClient.describeTopology());
+        requireControl();
+        return ResponseEntity.ok(controlClient.describeTopology());
     }
     // normalize 동작을 수행한다.
 
@@ -163,9 +167,9 @@ public class AiChatController {
     }
     // requireMcp 동작을 수행한다.
 
-    private void requireMcp() {
-        if (mcpClient == null) {
-            throw new ResponseStatusException(org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE, "MCP client not configured");
+    private void requireControl() {
+        if (controlClient == null) {
+            throw new ResponseStatusException(org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE, "Control client not configured");
         }
     }
 }

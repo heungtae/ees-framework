@@ -26,6 +26,7 @@
         <module>spring-boot-starter</module>
         <module>example</module>
         <module>application</module>
+        <module>ai-web-application</module>
     </modules>
 
     <properties>

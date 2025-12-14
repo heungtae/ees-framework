@@ -4,7 +4,7 @@ import com.ees.ai.core.AiAgentService;
 import com.ees.ai.core.AiMessage;
 import com.ees.ai.core.AiRequest;
 import com.ees.ai.core.AiResponse;
-import com.ees.ai.mcp.McpClient;
+import com.ees.ai.control.ControlClient;
 import java.util.List;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -37,7 +37,7 @@ class AiChatControllerTest {
 
     @Test
     void shouldExposeResourceEndpoints() {
-        McpClient mcpClient = new McpClient() {
+        ControlClient controlClient = new ControlClient() {
             @Override
             public String listNodes() {
                 return "nodes";
@@ -54,22 +54,22 @@ class AiChatControllerTest {
             }
 
             @Override
-            public String pauseWorkflow(String executionId) {
+            public String pauseWorkflow(String workflowId) {
                 return "";
             }
 
             @Override
-            public String resumeWorkflow(String executionId) {
+            public String resumeWorkflow(String workflowId) {
                 return "";
             }
 
             @Override
-            public String cancelWorkflow(String executionId) {
+            public String cancelWorkflow(String workflowId) {
                 return "";
             }
 
             @Override
-            public String getWorkflowState(String executionId) {
+            public String getWorkflowState(String workflowId) {
                 return "";
             }
 
@@ -89,7 +89,7 @@ class AiChatControllerTest {
             }
         };
 
-        MockMvc mockMvc = MockMvcBuilders.standaloneSetup(new AiChatController(new StubAiService(), new FixedProvider<>(mcpClient)))
+        MockMvc mockMvc = MockMvcBuilders.standaloneSetup(new AiChatController(new StubAiService(), new FixedProvider<>(controlClient)))
             .build();
 
         try {

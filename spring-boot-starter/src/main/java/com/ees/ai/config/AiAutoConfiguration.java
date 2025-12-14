@@ -10,6 +10,15 @@ import com.ees.ai.core.InMemoryAiSessionService;
 import com.ees.ai.core.InMemoryAiRateLimiter;
 import com.ees.ai.core.MetadataStoreAiSessionService;
 import com.ees.ai.support.NoOpChatModel;
+import com.ees.ai.control.ControlAuditService;
+import com.ees.ai.control.ControlClient;
+import com.ees.ai.control.ControlFacade;
+import com.ees.ai.control.ControlMode;
+import com.ees.ai.control.ControlProperties;
+import com.ees.ai.control.ControlToolBridge;
+import com.ees.ai.control.LocalControlClient;
+import com.ees.ai.control.LoggingControlAuditService;
+import com.ees.ai.control.RestControlClient;
 import com.ees.ai.mcp.DefaultMcpClient;
 import com.ees.ai.mcp.McpClient;
 import com.ees.ai.mcp.McpProperties;
@@ -20,6 +29,7 @@ import com.ees.ai.mcp.RestMcpClient;
 import com.ees.metadatastore.InMemoryMetadataStore;
 import com.ees.metadatastore.MetadataStore;
 import java.util.List;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.model.StreamingChatModel;
 import org.springframework.ai.tool.ToolCallback;
@@ -32,6 +42,8 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.client.RestClient;
 import io.micrometer.core.instrument.MeterRegistry;
+import org.springframework.beans.factory.ObjectProvider;
+import com.ees.ai.api.AiChatController;
 
 /**
  * AI/에이전트 및 MCP 연동을 위한 Spring Boot 자동 설정.
@@ -40,7 +52,7 @@ import io.micrometer.core.instrument.MeterRegistry;
  */
 @Configuration
 @ConditionalOnClass(ChatModel.class)
-@EnableConfigurationProperties({AiAgentProperties.class, McpProperties.class})
+@EnableConfigurationProperties({AiAgentProperties.class, McpProperties.class, ControlProperties.class})
 public class AiAutoConfiguration {
 
     /**
@@ -108,6 +120,78 @@ public class AiAutoConfiguration {
     }
 
     /**
+     * 기본 Control 감사 서비스를 등록한다.
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    public ControlAuditService controlAuditService() {
+        return new LoggingControlAuditService();
+    }
+
+    /**
+     * Control 호출에 사용할 {@link RestClient}를 구성한다(remote 모드).
+     */
+    @Bean(name = "controlRestClient")
+    @ConditionalOnMissingBean(name = "controlRestClient")
+    @ConditionalOnProperty(prefix = "ees.control", name = "mode", havingValue = "REMOTE")
+    public RestClient controlRestClient(ControlProperties properties) {
+        SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
+        requestFactory.setConnectTimeout((int) properties.getTimeoutMillis());
+        requestFactory.setReadTimeout((int) properties.getTimeoutMillis());
+
+        RestClient.Builder builder = RestClient.builder()
+            .baseUrl(properties.getBaseUrl())
+            .requestFactory(requestFactory);
+        if (properties.getAuthToken() != null && !properties.getAuthToken().isBlank()) {
+            builder.defaultHeader("Authorization", "Bearer " + properties.getAuthToken());
+        }
+        return builder.build();
+    }
+
+    /**
+     * remote 모드에서 사용할 REST 기반 {@link ControlClient}.
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    @ConditionalOnProperty(prefix = "ees.control", name = "mode", havingValue = "REMOTE")
+    public ControlClient restControlClient(RestClient controlRestClient) {
+        return new RestControlClient(controlRestClient);
+    }
+
+    /**
+     * local 모드에서 사용할 {@link ControlClient}.
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    @ConditionalOnProperty(prefix = "ees.control", name = "mode", havingValue = "LOCAL", matchIfMissing = true)
+    public ControlClient localControlClient(ControlFacade facade, ObjectProvider<ObjectMapper> objectMapperProvider) {
+        ObjectMapper mapper = objectMapperProvider.getIfAvailable(ObjectMapper::new);
+        return new LocalControlClient(facade, mapper);
+    }
+
+    /**
+     * Control 툴을 {@link AiToolRegistry}에 브릿지하는 컴포넌트를 등록한다.
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    public ControlToolBridge controlToolBridge(ControlClient controlClient,
+                                               AiToolRegistry aiToolRegistry,
+                                               ObjectProvider<ObjectMapper> objectMapperProvider,
+                                               ControlAuditService auditService) {
+        ObjectMapper mapper = objectMapperProvider.getIfAvailable(ObjectMapper::new);
+        return new ControlToolBridge(controlClient, aiToolRegistry, mapper, auditService);
+    }
+
+    /**
+     * Control 툴 콜백 목록을 노출한다.
+     */
+    @Bean
+    @ConditionalOnMissingBean(name = "controlToolCallbacks")
+    public List<ToolCallback> controlToolCallbacks(ControlToolBridge bridge) {
+        return bridge.toolCallbacks();
+    }
+
+    /**
      * MCP base-url이 없을 때 사용할 기본 {@link McpClient}를 등록한다.
      */
     @Bean
@@ -162,6 +246,7 @@ public class AiAutoConfiguration {
      */
     @Bean
     @ConditionalOnMissingBean
+    @ConditionalOnProperty(prefix = "ees.mcp", name = "enabled", havingValue = "true")
     public McpToolBridge mcpToolBridge(McpClient mcpClient, AiToolRegistry aiToolRegistry, McpAuditService auditService) {
         return new McpToolBridge(mcpClient, aiToolRegistry, auditService);
     }
@@ -171,8 +256,20 @@ public class AiAutoConfiguration {
      */
     @Bean
     @ConditionalOnMissingBean(name = "mcpToolCallbacks")
+    @ConditionalOnProperty(prefix = "ees.mcp", name = "enabled", havingValue = "true")
     public List<ToolCallback> mcpToolCallbacks(McpToolBridge bridge) {
         return bridge.toolCallbacks();
+    }
+
+    /**
+     * AI Chat Web API 컨트롤러를 등록한다.
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    @ConditionalOnProperty(prefix = "ees.ai.web", name = "enabled", havingValue = "true", matchIfMissing = true)
+    public AiChatController aiChatController(com.ees.ai.core.AiAgentService aiAgentService,
+                                             ObjectProvider<ControlClient> controlClient) {
+        return new AiChatController(aiAgentService, controlClient);
     }
 
     /**

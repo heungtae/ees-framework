@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="ko">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>EES AI Chat</title>
+    <link rel="stylesheet" href="/ai-chat.css">
+</head>
+<body>
+<div class="container">
+    <h1>EES AI Chat</h1>
+    <div class="grid">
+        <div class="panel">
+            <div class="row">
+                <div style="flex:1">
+                    <label>sessionId</label>
+                    <input id="sessionId" type="text">
+                </div>
+                <div style="flex:1">
+                    <label>userId</label>
+                    <input id="userId" type="text" value="web-user">
+                </div>
+            </div>
+            <div style="margin-top:10px">
+                <label>toolsAllowed (콤마 구분)</label>
+                <input id="toolsAllowed" type="text" placeholder="listNodes, describeTopology">
+            </div>
+            <div class="row" style="margin-top:10px">
+                <label style="display:flex; gap:8px; align-items:center;">
+                    <input id="approve" type="checkbox"> 위험 툴 승인 (X-AI-Approve)
+                </label>
+                <label style="display:flex; gap:8px; align-items:center;">
+                    <input id="streaming" type="checkbox" checked> streaming
+                </label>
+            </div>
+            <div style="margin-top:10px">
+                <label>message</label>
+                <textarea id="message" placeholder="질문을 입력하세요 (Ctrl+Enter 전송)"></textarea>
+            </div>
+            <div class="row" style="margin-top:10px">
+                <button id="send">chat</button>
+                <button id="sendStream" class="secondary">chat/stream</button>
+                <span class="status" id="status"></span>
+            </div>
+        </div>
+        <div class="panel">
+            <div class="row" style="justify-content:space-between">
+                <div class="status">SSE 상태: <span id="sseStatus">idle</span></div>
+                <button id="clear" class="secondary">clear</button>
+            </div>
+            <div class="transcript" id="transcript" style="margin-top:10px"></div>
+        </div>
+    </div>
+</div>
+<script src="/ai-chat.js"></script>
+</body>
+</html>
+

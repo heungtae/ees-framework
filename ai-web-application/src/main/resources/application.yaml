@@ -1,0 +1,33 @@
+# Standalone AI Web Application configuration.
+server:
+  port: 8082
+
+ees:
+  ai:
+    model: gpt-4o-mini
+    streaming-enabled: true
+    tools-allowed: []
+    history-store: in-memory
+    history-ttl-seconds: 86400
+    rate-limit:
+      requests-per-minute: 60
+      tokens-per-minute: 0
+    web:
+      enabled: true
+  control:
+    web:
+      enabled: false
+    mode: REMOTE
+    base-url: http://localhost:8080
+    auth-token: dev-control-token
+
+spring:
+  main:
+    web-application-type: servlet
+  threads:
+    virtual:
+      enabled: true
+  ai:
+    openai:
+      api-key: ${OPENAI_API_KEY:}
+      base-url: https://api.openai.com/v1

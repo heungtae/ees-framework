@@ -44,8 +44,19 @@ ees:
     rate-limit:
       requests-per-minute: 60
       tokens-per-minute: 0
+    web:
+      enabled: true
+
+  # Control API settings (Embedded 기본: local + web enabled).
+  control:
+    web:
+      enabled: true
+    mode: LOCAL
+    auth-token: dev-control-token
+    timeout-millis: 5000
 
   mcp:
+    enabled: false
     base-url: http://localhost:8081  # MCP endpoint (optional)
     timeout-millis: 5000
     auth-token: ""  # Set if MCP requires auth
